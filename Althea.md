@@ -169,9 +169,9 @@ Each functionality should state the level at which it operates. The scope determ
 |---|---|---|---|
 | Single-code analysis | Examines one code and all quotations assigned to it | One code | Internal Code Coherence; Verifying Coding; Creating Code Definitions |
 | Selected multi-code analysis | Examines a chosen pair or group of related codes | Two or more codes, usually selected by the user | Comparing Codes; Code Hierarchy Suggestions |
-| Cross-code or dataset-level analysis | Looks for patterns, inconsistencies, or relationships across multiple codes and their quotation assignments | A code cluster, several codes, or a broader dataset scope | Cross-Code Coding Consistency; Category / Pattern Code Generation; Relational and Process Analysis |
+| Whole-dataset analysis | Looks for patterns, inconsistencies, or relationships across the complete quotation-per-code dataset | The whole dataset | Cross-Code Coding Consistency; Category / Pattern Code Generation; Relational and Process Analysis |
 
-The third scope does not necessarily mean that every code in the project must be included. The user may select a relevant code cluster, while the system can use the wider quotation-per-code dataset to identify recurring patterns, co-occurrences, or inconsistencies. The selected scope should always be visible before the analysis starts.
+The third scope always operates across the complete quotation-per-code dataset. The user does not select a subset at this scope; the system uses all available codes and quotation-code assignments to identify recurring patterns, co-occurrences, or inconsistencies. The selected scope should always be visible before the analysis starts.
 
 ### 3.1 Internal Code Coherence
 
@@ -794,7 +794,7 @@ The comparison screen should show both code definitions and enough quotation evi
 
 This step identifies quotations that are conceptually very similar but have been assigned to different codes. Unlike the code-level comparison in Section 3.4, this analysis works at the quotation level and asks whether different codes are being applied inconsistently to similar meanings.
 
-The functionality operates on a selected code cluster or broader dataset scope. It generates candidate quotation pairs or groups for researcher review; similarity is an alert, not proof that the coding is wrong.
+The functionality operates across the whole quotation-per-code dataset. It generates candidate quotation pairs or groups for researcher review; similarity is an alert, not proof that the coding is wrong.
 
 #### 3.5.1 Purpose
 
@@ -836,9 +836,9 @@ This function complements the code-level comparison by checking whether comparab
 
 #### Functionality-specific workflow
 
-- **Scope:** Code cluster or broader dataset scope.
+- **Scope:** Whole dataset.
 - **User question:** Are similar meanings being coded inconsistently across the dataset?
-- **Input and evidence:** A selected cluster of related codes and comparable quotation-code assignments.
+- **Input and evidence:** The complete quotation-per-code dataset and comparable quotation-code assignments across all codes.
 - **User actions:** Review flagged quotation pairs or groups, compare their assigned codes and boundaries, confirm or question the distinction, and choose a corrective action.
 - **System output:** Consistency alert, evidence comparison, coding-drift summary, and recommendation.
 - **Possible adaptation:** Preserve the distinction, clarify boundaries, normalize assignments, rename, merge, or investigate further. Any assignment change follows [Section 4](#4-user-actions-and-database-adaptations).
@@ -850,11 +850,11 @@ This function complements the code-level comparison by checking whether comparab
 +--------------------------------------------------+
 | Project: Access Study             Step 5 of 7    |
 +--------------------------------------------------+
-| Scope: Code cluster                              |
+| Scope: Whole dataset                             |
 | Function: Cross-Code Coding Consistency         |
 |                                                  |
-| Code cluster                                     |
-| [Financial barriers] [Access barriers]           |
+| Dataset coverage                                 |
+| All codes and quotation assignments              |
 | 73 comparable quotation assignments              |
 |                                                  |
 | Candidate consistency alerts                     |
@@ -1804,8 +1804,8 @@ Once preparation is complete, the user first selects the level at which the anal
 | ( ) Selected pair or group                       |
 |     Compare or organize several related codes    |
 |                                                  |
-| ( ) Code cluster or dataset                      |
-|     Find patterns across multiple code uses      |
+| ( ) Whole dataset                                |
+|     Find patterns across all code uses           |
 |                                                  |
 | [Back to preparation] [Continue]                 |
 +--------------------------------------------------+
@@ -1848,7 +1848,29 @@ After selecting the scope, the user chooses a compatible analytical function. Th
 +--------------------------------------------------+
 ```
 
-Only functionalities compatible with the selected scope should be shown. For example, **Single code** displays Internal Code Coherence, Verifying Coding, and Creating Code Definitions. A selected pair or group displays comparison and hierarchy functions, while a code cluster or dataset displays consistency, pattern, and relational functions.
+For the **Selected pair or group** scope, the user selects the codes individually from the available database codes. The interface should provide two code drop-down menus, one for each side of the comparison, rather than offering predefined pairs or groups:
+
+```text
+| Scope: Selected pair or group                    |
+|                                                  |
+| First code       [Access barriers             v] |
+| Second code      [Practical support           v] |
+|                                                  |
+| Available review functions                      |
+|                                                  |
+| ( ) Comparing Code Structure                     |
+|     How do these codes differ in meaning?       |
+|                                                  |
+| ( ) Hierarchy Review                             |
+|     Should these codes be grouped or separated? |
+|                                                  |
+| ( ) Overlap Resolution                           |
+|     Which quotations fit one code better?       |
+```
+
+Both menus use the current database code list and must contain distinct selections. If the user selects the same code in both menus, Althea should show an inline validation message such as **Choose two different codes to compare** and keep **Continue to review** disabled until the selections differ. The selected codes and their metadata should remain visible before the user chooses a review function.
+
+Only functionalities compatible with the selected scope should be shown. For example, **Single code** displays Internal Code Coherence, Verifying Coding, and Creating Code Definitions. A selected pair or group displays comparison and hierarchy functions, while **Whole dataset** displays consistency, pattern, and relational functions. The whole-dataset scope does not offer a code-cluster selector.
 
 #### Step 5: Review evidence and produce a finding
 

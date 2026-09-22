@@ -721,6 +721,209 @@
     line-height: 1.6;
   }
 
+  .scope-panel {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: 0;
+    overflow: hidden;
+    margin-top: 20px;
+  }
+  .scope-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 16px 18px 12px;
+    border-bottom: 1px solid var(--color-border);
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+  }
+  .scope-header strong {
+    color: var(--color-text);
+    font-size: 0.95rem;
+    font-weight: 600;
+  }
+  .scope-body {
+    padding: 18px 18px 14px;
+  }
+  .scope-body h3 {
+    margin: 0 0 18px;
+    font-size: 1.05rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  .scope-options {
+    display: grid;
+    gap: 14px;
+  }
+  .scope-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: var(--radius-md);
+    border: 1px solid transparent;
+    background: transparent;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+  }
+  .scope-option:hover {
+    background: var(--color-surface-sunken);
+    border-color: var(--color-border);
+  }
+  .scope-option input {
+    margin-top: 2px;
+    accent-color: var(--color-accent);
+  }
+  .scope-copy {
+    display: block;
+    color: var(--color-text);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    line-height: 1.5;
+  }
+  .scope-copy small {
+    display: block;
+    color: var(--color-text-muted);
+    font-size: 0.8125rem;
+    font-weight: 400;
+    margin-top: 4px;
+  }
+  .scope-actions {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 0 18px 18px;
+    margin-top: 4px;
+  }
+  .scope-actions .btn {
+    width: auto;
+    min-width: 132px;
+    padding: 9px 12px;
+    font-size: 0.8125rem;
+  }
+
+  .selected-scope-meta {
+    margin: 0 0 18px;
+    color: var(--color-text-muted);
+    font-size: 0.875rem;
+  }
+  .selected-scope-meta strong {
+    color: var(--color-text);
+  }
+  .review-select-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 0 0 18px;
+  }
+  .review-select-row label {
+    font-size: 0.8125rem;
+    color: var(--color-text-muted);
+    font-weight: 600;
+  }
+  .review-select-row select {
+    flex: 1;
+    min-width: 0;
+    padding: 10px 12px;
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    color: var(--color-text);
+    font-size: 0.9375rem;
+  }
+  .review-select-row.is-invalid select {
+    border-color: var(--color-error-icon);
+  }
+  .pair-selectors {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+  .pair-selector label {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--color-text-muted);
+    font-size: 0.8125rem;
+    font-weight: 600;
+  }
+  .pair-selector select {
+    width: 100%;
+    min-width: 0;
+    padding: 10px 12px;
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    color: var(--color-text);
+    font-size: 0.9375rem;
+  }
+  .pair-selectors.is-invalid select {
+    border-color: var(--color-error-icon);
+  }
+  .selection-meta {
+    margin: -6px 0 18px;
+    color: var(--color-text-muted);
+    font-size: 0.8125rem;
+  }
+  .selection-error {
+    display: none;
+    margin: -6px 0 18px;
+    color: var(--color-error-text);
+    font-size: 0.8125rem;
+  }
+  .selection-error.is-visible { display: block; }
+  .function-selector {
+    display: grid;
+    gap: 12px;
+  }
+  .function-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 12px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+  }
+  .function-option:hover {
+    border-color: var(--color-border-strong);
+    background: var(--color-surface-sunken);
+  }
+  .function-option input {
+    margin-top: 3px;
+    accent-color: var(--color-accent);
+  }
+  .function-copy {
+    display: block;
+    color: var(--color-text);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    line-height: 1.5;
+  }
+  .function-copy small {
+    display: block;
+    color: var(--color-text-muted);
+    font-size: 0.8125rem;
+    font-weight: 400;
+    margin-top: 4px;
+  }
+  .scope-cta-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    color: var(--color-accent);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    padding: 0;
+    margin-top: 12px;
+    cursor: pointer;
+  }
+  .scope-cta-link:hover { text-decoration: underline; }
+
   /* ---------- Actions ---------- */
   .disabled-hint {
     font-size: 0.8125rem;
@@ -920,81 +1123,45 @@
     </section>
 
     <section class="step-panel" data-step="3">
-      <h1>Review quotations</h1>
-      <p class="lead">Check how quotations were assigned to codes before you refine your structure.</p>
+      <h1>Review workspace</h1>
+      <p class="lead">Select the analysis scope for this project before choosing a review function.</p>
 
-      <div class="task-grid">
-        <article class="task-card">
-          <div class="task-head">
-            <h3>Interview 04</h3>
-            <span>12 quotations</span>
-          </div>
-          <ul class="quote-list">
-            <li>
-              <span class="quote-id">Q12</span>
-              <p>“The participant described repeated sleep disruption after evening screen use.”</p>
-            </li>
-            <li>
-              <span class="quote-id">Q17</span>
-              <p>“She reported feeling tired during class but not being able to fall asleep.”</p>
-            </li>
-            <li>
-              <span class="quote-id">Q21</span>
-              <p>“Routine stress made the bedtime schedule harder to maintain.”</p>
-            </li>
-          </ul>
-        </article>
+      <div class="scope-panel">
+        <div class="scope-header">
+          <strong>Project: Access Study</strong>
+          <span>Step 3 of 7</span>
+        </div>
 
-        <article class="task-card">
-          <div class="task-head">
-            <h3>Interview 08</h3>
-            <span>9 quotations</span>
+        <div class="scope-body">
+          <h3>What would you like to examine?</h3>
+
+          <div class="scope-options">
+            <label class="scope-option">
+              <input type="radio" name="analysis-scope" value="single-code" checked>
+              <span class="scope-copy">Single code<small>Review one code and all its quotations</small></span>
+            </label>
+
+            <label class="scope-option">
+              <input type="radio" name="analysis-scope" value="pair-group">
+              <span class="scope-copy">Selected pair or group<small>Compare or organize several related codes</small></span>
+            </label>
+
+            <label class="scope-option">
+              <input type="radio" name="analysis-scope" value="whole-dataset">
+              <span class="scope-copy">Whole dataset<small>Find patterns across all code uses</small></span>
+            </label>
           </div>
-          <ul class="quote-list">
-            <li>
-              <span class="quote-id">Q06</span>
-              <p>“The child woke up several times during the night and had trouble returning to sleep.”</p>
-            </li>
-            <li>
-              <span class="quote-id">Q09</span>
-              <p>“Avoiding screens later in the evening improved nighttime rest.”</p>
-            </li>
-          </ul>
-        </article>
+        </div>
+
+        <div class="scope-actions">
+          <button type="button" class="btn btn-secondary" id="scope-back">Back to preparation</button>
+          <button type="button" class="btn btn-primary" id="scope-continue">Continue</button>
+        </div>
       </div>
     </section>
 
     <section class="step-panel" data-step="4">
-      <h1>Refine codes</h1>
-      <p class="lead">Resolve overlaps and merge similar codes so your final review structure stays consistent.</p>
-
-      <div class="code-grid">
-        <article class="code-card">
-          <div class="code-head">
-            <h3>Sleep disruption</h3>
-            <span class="pill is-warning">6 overlaps</span>
-          </div>
-          <p>Suggested merge with “Sleep difficulties” and “Interrupted sleep” based on similar grounded quotations.</p>
-          <div class="tag-row">
-            <span class="tag">Grounded 38</span>
-            <span class="tag">Density 4</span>
-            <span class="tag">2 document matches</span>
-          </div>
-        </article>
-
-        <article class="code-card">
-          <div class="code-head">
-            <h3>Evening routine</h3>
-            <span class="pill">2 overlaps</span>
-          </div>
-          <p>Family bedtime routines and screen timing appear to cluster around the same coding pattern.</p>
-          <div class="tag-row">
-            <span class="tag">Grounded 19</span>
-            <span class="tag">Density 3</span>
-            <span class="tag">1 merged suggestion</span>
-          </div>
-        </article>
-      </div>
+      <div id="step4-content"></div>
     </section>
   </div>
 
@@ -1025,14 +1192,165 @@
   var ACCEPT_EXT = ["csv", "xlsx", "xls"];
 
   var stepPanels = Array.prototype.slice.call(document.querySelectorAll(".step-panel"));
+  var scopePathConfig = {
+    "single-code": {
+      label: "Single code",
+      selectedLabel: "Selected code",
+      selections: [
+        { value: "Access barriers", text: "Access barriers", meta: "42 quotations | No approved definition" },
+        { value: "Sleep disruption", text: "Sleep disruption", meta: "38 quotations | 2 suggested subcodes" },
+        { value: "Family support", text: "Family support", meta: "21 quotations | Stable definition" }
+      ],
+      functions: [
+        { value: "internal-coherence", title: "Internal Code Coherence", description: "Do these quotations form one conceptual group?" },
+        { value: "verifying-coding", title: "Verifying Coding", description: "Do the quotations support the code label?" },
+        { value: "creating-code-definitions", title: "Creating Code Definitions", description: "What belongs inside this code?" }
+      ]
+    },
+    "pair-group": {
+      label: "Selected pair or group",
+      selectedLabel: "Selected codes",
+      codeSelections: [
+        { value: "Access barriers", text: "Access barriers", meta: "42 quotations | No approved definition" },
+        { value: "Practical support", text: "Practical support", meta: "27 quotations | Stable definition" },
+        { value: "Sleep disruption", text: "Sleep disruption", meta: "38 quotations | 2 suggested subcodes" },
+        { value: "Evening routine", text: "Evening routine", meta: "19 quotations | Stable definition" },
+        { value: "Family burden", text: "Family burden", meta: "31 quotations | Needs review" }
+      ],
+      functions: [
+        { value: "compare-code-structure", title: "Comparing Code Structure", description: "How do these codes differ in meaning or coverage?" },
+        { value: "hierarchy-review", title: "Hierarchy Review", description: "Should these codes be grouped or separated?" },
+        { value: "overlap-resolution", title: "Overlap Resolution", description: "Which quotations fit one code better than another?" }
+      ]
+    },
+    "whole-dataset": {
+      label: "Whole dataset",
+      datasetSummary: "All codes and quotation assignments",
+      functions: [
+        { value: "pattern-consistency", title: "Pattern Consistency", description: "Which patterns recur across the selected code set?" },
+        { value: "dataset-structure", title: "Dataset Structure Review", description: "Do these codes form a coherent analytical cluster?" },
+        { value: "relational-review", title: "Relational Review", description: "Which code relationships are supported by the evidence?" }
+      ]
+    }
+  };
 
   var state = {
     currentStep: 1,
     projectName: "",
     creating: false,
+    analysisScope: "single-code",
     quotation: { status: "empty", file: null, missing: [] },
     codes: { status: "empty", file: null, missing: [] }
   };
+
+  function getScopeConfig() {
+    return scopePathConfig[state.analysisScope] || scopePathConfig["single-code"];
+  }
+
+  function renderScopeSelection() {
+    var inputs = document.querySelectorAll('input[name="analysis-scope"]');
+    inputs.forEach(function (input) {
+      input.checked = input.value === state.analysisScope;
+    });
+  }
+
+  function renderStep4() {
+    var config = getScopeConfig();
+    var optionsHtml = config.functions.map(function (func) {
+      return (
+        '<label class="function-option">' +
+          '<input type="radio" name="review-function" value="' + func.value + '">' +
+          '<span class="function-copy">' + func.title + '<small>' + func.description + '</small></span>' +
+        '</label>'
+      );
+    }).join("");
+
+    var selectionOptions = (config.selections || []).map(function (option) {
+      return '<option value="' + option.value + '">' + option.text + '</option>';
+    }).join("");
+    var codeOptions = (config.codeSelections || []).map(function (option) {
+      return '<option value="' + option.value + '">' + option.text + '</option>';
+    }).join("");
+    var selectionMarkup = config.codeSelections ? (
+      '<div class="pair-selectors" id="pair-selectors">' +
+        '<div class="pair-selector"><label for="pair-code-a">First code</label><select id="pair-code-a">' + codeOptions + '</select></div>' +
+        '<div class="pair-selector"><label for="pair-code-b">Second code</label><select id="pair-code-b">' + codeOptions + '</select></div>' +
+      '</div>' +
+      '<p class="selection-meta" id="pair-selection-meta"></p>' +
+      '<p class="selection-error" id="pair-selection-error" role="alert">Choose two different codes to compare.</p>'
+    ) : config.datasetSummary ? (
+      '<div class="selected-scope-meta"><strong>Dataset coverage:</strong> ' + config.datasetSummary + '</div>'
+    ) : (
+      '<div class="review-select-row"><label for="step4-selection">' + config.selectedLabel + '</label><select id="step4-selection">' + selectionOptions + '</select></div>'
+    );
+
+    var step4Content = document.getElementById("step4-content");
+    step4Content.innerHTML = [
+      '<h1>Review workspace</h1>',
+      '<p class="lead">Select the review path that matches the chosen scope.</p>',
+      '<div class="scope-panel">',
+        '<div class="scope-header">',
+          '<strong>Project: Access Study</strong>',
+          '<span>Step 4 of 7</span>',
+        '</div>',
+        '<div class="scope-body">',
+          '<div class="selected-scope-meta"><strong>Scope:</strong> ' + config.label + '</div>',
+          selectionMarkup,
+          '<h3>Available review functions</h3>',
+          '<div class="function-selector">' + optionsHtml + '</div>',
+        '</div>',
+        '<div class="scope-actions">',
+          '<button type="button" class="btn btn-secondary" id="step4-back">Back</button>',
+          '<button type="button" class="btn btn-primary" id="step4-continue">Continue to review</button>',
+        '</div>',
+      '</div>',
+      '<button type="button" class="scope-cta-link" id="step4-change-scope">Change analysis scope</button>'
+    ].join("");
+
+    var continueBtn = document.getElementById("step4-continue");
+    var backBtn = document.getElementById("step4-back");
+    var changeScopeBtn = document.getElementById("step4-change-scope");
+    var pairCodeA = document.getElementById("pair-code-a");
+    var pairCodeB = document.getElementById("pair-code-b");
+    var pairSelectionMeta = document.getElementById("pair-selection-meta");
+    var pairSelectionError = document.getElementById("pair-selection-error");
+
+    function updatePairSelection() {
+      if (!pairCodeA || !pairCodeB) return true;
+      var sameCode = pairCodeA.value === pairCodeB.value;
+      var selectedA = config.codeSelections.filter(function (option) { return option.value === pairCodeA.value; })[0];
+      var selectedB = config.codeSelections.filter(function (option) { return option.value === pairCodeB.value; })[0];
+      pairSelectionMeta.textContent = selectedA.meta + " | " + selectedB.meta;
+      pairSelectionError.classList.toggle("is-visible", sameCode);
+      pairCodeA.closest(".pair-selector").parentElement.classList.toggle("is-invalid", sameCode);
+      continueBtn.disabled = sameCode;
+      return !sameCode;
+    }
+
+    if (pairCodeA && pairCodeB) {
+      pairCodeA.selectedIndex = 0;
+      pairCodeB.selectedIndex = 1;
+      pairCodeA.addEventListener("change", updatePairSelection);
+      pairCodeB.addEventListener("change", updatePairSelection);
+      updatePairSelection();
+    }
+
+    continueBtn.addEventListener("click", function () {
+      if (!updatePairSelection()) return;
+      showToast("Review path ready for " + config.label.toLowerCase() + ".");
+    });
+    backBtn.addEventListener("click", function () {
+      setStep(3);
+    });
+    changeScopeBtn.addEventListener("click", function () {
+      setStep(3);
+    });
+
+    var functionOptions = document.querySelectorAll('input[name="review-function"]');
+    if (functionOptions.length) {
+      functionOptions[0].checked = true;
+    }
+  }
 
   function icon(name, size) {
     size = size || 20;
@@ -1122,6 +1440,7 @@
       panel.classList.toggle("is-active", Number(panel.dataset.step) === state.currentStep);
     });
     renderProgress(state.currentStep);
+    if (state.currentStep === 4) renderStep4();
     updateCreateButton();
   }
 
@@ -1368,6 +1687,25 @@
   nameInput.addEventListener("input", function (e) {
     state.projectName = e.target.value;
     updateCreateButton();
+  });
+
+  // ---------- Scope selection ----------
+  document.querySelectorAll('input[name="analysis-scope"]').forEach(function (radio) {
+    radio.addEventListener("change", function () {
+      state.analysisScope = radio.value;
+      renderScopeSelection();
+      if (state.currentStep === 4) {
+        renderStep4();
+      }
+    });
+  });
+
+  document.getElementById("scope-back").addEventListener("click", function () {
+    setStep(2);
+  });
+
+  document.getElementById("scope-continue").addEventListener("click", function () {
+    setStep(4);
   });
 
   // ---------- Create button state ----------
