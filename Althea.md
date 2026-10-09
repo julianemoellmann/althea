@@ -464,10 +464,10 @@ Every suggestion that could change the codebook or coding data should follow thi
 2. The researcher reviews the evidence and selects an action.
 3. The researcher may approve, reject, edit, or defer the suggestion.
 4. If approved, the system creates a proposed database adaptation for confirmation.
-5. After confirmation, the adaptation is saved and added to the audit trail.
+5. After confirmation, the adaptation is saved and the updated value is preserved for later review.
 6. The original value and the reasoning behind the change remain available for later review.
 
-The default status of every generated suggestion should be **Under review**. Other possible statuses are **Approved**, **Rejected**, **Deferred**, and **Implemented**.
+The default status of every generated suggestion should be **Under review**. Other possible statuses are **Approved**, **Rejected**, and **Deferred**. In the first prototype, **Approved** is also the state in which the proposed database adaptation has been accepted and saved. Implementation is therefore treated as the execution step of an approved decision rather than as a separate user-facing status. If the interface needs to show that a change has been applied, it can display an auxiliary label such as **Approved and applied** or an implementation timestamp, but the primary status remains **Approved**.
 
 ### 4.2 Available user actions
 
@@ -477,14 +477,18 @@ The default status of every generated suggestion should be **Under review**. Oth
 | Rename code | The current label is vague, misleading, or too broad | Save the new label and preserve the previous label |
 | Refine definition | The code needs clearer meaning or boundaries | Save a revised definition, inclusion rule, and exclusion rule |
 | Create subcode | A code contains recurring, meaningful subgroups | Create new child codes and record their parent code |
+| Retire code | The code is no longer valid, useful, or conceptually defensible | Mark the code as retired and preserve its history for traceability; do not remove the code without a review record |
 | Merge codes | Two codes have nearly identical meaning and application | Create a merged code or designate a surviving code; preserve source-code history |
 | Split code | One code contains distinct concepts that should be separated | Create replacement codes and propose reassignment of affected quotations |
 | Recode quotation | A quotation is misaligned, borderline, or better suited to another code | Add, remove, or replace a quotation-code relationship |
+| Flag as borderline | A quotation or code is not clearly in or out of the category and needs review | Mark the item as borderline, retain the current assignment, and record the evidence and uncertainty |
 | Add or remove hierarchy | The code structure needs a parent-child or sibling relationship | Create, change, or remove a code relationship |
 | Approve relationship | A proposed causal, temporal, or process relationship is supported | Save the relationship, evidence, confidence, and approval status |
 | Reject suggestion | The evidence does not justify the proposed change | Keep the current database unchanged and record the rejection reason |
 | Defer decision | More discussion or evidence is needed | Keep the suggestion pending without changing the current database |
 | Add review note | The researcher wants to document reasoning or uncertainty | Save a note linked to the relevant code, quotation, or suggestion |
+
+A deferred decision should remain visible to the researcher after the action is taken. The system should display a running count of deferred items in the active project, for example “3 deferred decisions,” and should allow the user to navigate directly back to each deferred suggestion from the review list or project overview. The user should be able to reopen a deferred item, review its evidence again, and continue with a final decision without losing the original review context.
 
 ### 4.3 Database objects affected by user actions
 
@@ -509,24 +513,9 @@ The first prototype supports the three single-code functionalities listed below.
 | Verifying Coding | Keep, recode, flag as borderline, or reject the suggestion | Add or remove quotation-code assignments; save evidence and rationale |
 | Creating Code Definitions | Approve, edit, reject, or defer a definition | Add the approved definition to the project database |
 
-### 4.5 Audit trail and version history
+### 4.5 Version history
 
-Every approved or rejected action should produce an audit record containing:
-
-- action ID,
-- project ID,
-- affected object and object ID,
-- action type,
-- previous value or relationship,
-- proposed or new value,
-- supporting suggestion or evidence IDs,
-- researcher decision,
-- decision rationale,
-- researcher identity,
-- date and time,
-- implementation status.
-
-For changes to quotation-code assignments, the audit record should also include the quotation ID and the code before and after the change. For merges and splits, it should identify all source and resulting codes.
+Approved or rejected changes should preserve the previous state and the researcher's decision history so that the evolution of a code or assignment remains reviewable.
 
 The system should support the following principles:
 
@@ -545,7 +534,7 @@ The system identifies that `Access barriers` contains two recurring subgroups: f
 2. **User action:** The researcher reviews the quotations, approves the split, and edits the proposed labels.
 3. **Database adaptation:** The system creates `Financial barriers` and `Administrative barriers` as child codes and proposes new assignments for the affected quotations.
 4. **Confirmation:** The researcher approves or adjusts each quotation reassignment.
-5. **Audit record:** The system stores the original code, new codes, affected quotations, evidence, researcher, timestamp, and rationale.
+5. **Change record:** The system stores the original code, new codes, affected quotations, evidence, researcher, timestamp, and rationale.
 
 The same pattern applies to smaller changes, such as approving a revised definition or rejecting a suggested relationship.
 
@@ -586,7 +575,7 @@ The navigation should support the following principles:
 - **Safe forward movement:** Do not mark a stage complete until its required validation, review, or confirmation has been completed.
 - **Recoverable decisions:** Preserve rejected, deferred, and approved decisions in the review record.
 
-The stage navigation should be available throughout the core journey, while functionality-specific workflows open within the **Analyse** stage. The decision and database-adaptation controls described in [Section 4](#4-user-actions-and-database-adaptations) become available after the user has reviewed a finding.
+The stage navigation should be available throughout the core journey, while functionality-specific workflows open within the **Review** stage. The decision and database-adaptation controls described in [Section 4](#4-user-actions-and-database-adaptations) become available after the user has reviewed a finding.
 
 ### 5.4 Mandatory journey
 
@@ -665,7 +654,7 @@ These actions and their database effects are defined in [Section 4: User Actions
 
 #### Step 7: Confirm and record the adaptation
 
-If the user approves a change, the system presents the proposed database adaptation for confirmation. After confirmation, it saves the change, preserves the previous value or relationship, and records the evidence, rationale, researcher, timestamp, and implementation status in the audit trail described in [Section 4.5](#45-audit-trail-and-version-history).
+If the user approves a change, the system presents the proposed database adaptation for confirmation. After confirmation, it saves the change, preserves the previous value or relationship, and records the evidence, rationale, researcher, timestamp, and implementation status in the project decision history.
 
 ### 5.5 User actions and system responses
 
@@ -677,7 +666,9 @@ If the user approves a change, the system presents the proposed database adaptat
 | 4 | Choose a review function | Open compatible analytical modules with prepared data in context |
 | 5 | Review evidence | Show quotations, code information, findings, and uncertainty |
 | 6 | Resolve the finding | Record the user's decision and rationale |
-| 7 | Confirm an approved adaptation | Apply the reviewed change and create an audit record |
+| 7 | Confirm an approved adaptation | Apply the reviewed change and preserve the decision history |
+
+The system should also surface a project-level summary of deferred decisions. This summary should include the number of items currently deferred, a direct link or navigation action to reopen each deferred finding, and a clear indication that the item remains pending until the researcher resolves it. Deferred items should therefore be treated as active review tasks rather than as completed or forgotten decisions.
 
 ### 5.6 Final resolution rule
 
