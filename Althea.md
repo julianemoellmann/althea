@@ -232,44 +232,6 @@ This analysis should be conducted before final code definitions are locked in, b
 
 The system should distinguish between **evidence** from the quotations and the **interpretation** of that evidence. A subgroup is not automatically a reason to split the code; the researcher must decide whether it represents a legitimate subtype or a genuinely different concept.
 
-#### 3.1.7 Mockup: Internal Code Coherence review
-
-```text
-(5) Internal Code Coherence
-+--------------------------------------------------+
-| Project: Access Study             Step 5 of 7    |
-+--------------------------------------------------+
-| Scope: Single code                              |
-| Function: Internal Code Coherence               |
-|                                                  |
-| Code                                             |
-| [Access barriers                         v]      |
-| 42 quotations | Current status: Needs review     |
-|                                                  |
-| Evidence from quotation set                     |
-| Recurring subgroups detected:                   |
-| [Financial] [Administrative] [Transport]        |
-|                                                  |
-| Representative quotations                        |
-| "I could not afford the treatment..."           |
-| "The paperwork made it impossible..."           |
-| "The clinic was too far away..."                |
-|                                                  |
-| System assessment                               |
-| MODERATE COHERENCE                              |
-| Related manifestations are present, but the code |
-| may contain distinct subtypes.                   |
-|                                                  |
-| Suggested action                                |
-| [Keep and clarify] [Create subcodes] [Rename]   |
-| [Review quotations] [Defer]                     |
-|                                                  |
-| [Back to functions]       [Save assessment]     |
-+--------------------------------------------------+
-```
-
-The mockup should make clear that the system proposes an interpretation, while the researcher chooses the final action. The **Save assessment** action records the review; it does not itself write changes back to ATLAS.ti. Approved adaptations follow [Section 4](#4-user-actions-and-database-adaptations).
-
 ---
 
 ### 3.2 Verifying Coding
@@ -500,52 +462,6 @@ The possible transfer of an approved definition or other reviewed change back in
 - **Possible adaptation:** Submit the approved definition to the ATLAS.ti write-back process described in [Section 4.7](#47-atlasti-integration-and-write-back). An unapproved definition remains only in the review record.
 
 The definition review should record the previous definition, the proposed definition, the researcher's decision, and the rationale. The definition remains a suggestion until the researcher approves the exact wording.
-
-#### 3.3.9 Mockup: Creating Code Definitions
-
-```text
-(5) Create or revise a code definition
-+--------------------------------------------------+
-| Project: Access Study             Step 5 of 7    |
-+--------------------------------------------------+
-| Scope: Single code                              |
-| Function: Creating Code Definitions             |
-|                                                  |
-| Code                                             |
-| [Access barriers                         v]      |
-| 42 quotations | Existing definition: None        |
-|                                                  |
-| Evidence summary                                |
-| Core pattern: Obstacles to obtaining services    |
-| Related codes: Service gaps, Financial burden    |
-|                                                  |
-| Draft definition                                |
-| Core Concept:                                    |
-| [Practical barriers that limit access to        |
-|  support or services.________________________]  |
-|                                                  |
-| Boundary Rules:                                  |
-| [Use for concrete obstacles such as cost,       |
-|  waiting time, transport, or administration;    |
-|  exclude general dissatisfaction._____________] |
-|                                                  |
-| Definition checks                                |
-| [x] Core concept is present                      |
-| [x] Inclusion rule is clear                      |
-| [x] Exclusion rule is clear                      |
-| [!] Review borderline quotation                  |
-|                                                  |
-| Representative evidence                         |
-| Prototypical | Borderline | Atypical            |
-|                                                  |
-| [Reject] [Defer] [Save draft] [Approve]          |
-|                                                  |
-| Approved text can be sent to ATLAS.ti only      |
-| through the confirmed write-back process.       |
-+--------------------------------------------------+
-```
-
-The screen should keep the evidence and generated definition visibly separate. **Approve** records the researcher's decision and makes the definition eligible for the write-back process; it does not write to ATLAS.ti without the separate confirmation described in [Section 4.7](#47-atlasti-integration-and-write-back).
 
 ---
 
