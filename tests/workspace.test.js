@@ -4,6 +4,42 @@ import { readFile } from 'node:fs/promises';
 import { readExport, prepareImports, guessMapping, parseCsv, csv } from '../src/data.js';
 import { createProject, emptyDraft, previewDecision, commitDecision, validateBackup, quotesFor, countWords } from '../src/model.js';
 import { exampleProvider } from '../src/analysis.js';
+import { verificationProvider } from '../src/verification.js';
+import { saveReview } from '../src/model.js';
+
+test('verification supplies six evidence-linked questions without modifying project or researcher assessment', async () => {
+  const p = project(), before = JSON.stringify(p);
+  const f = await verificationProvider.analyze({codeIds:['c1'],project:p});
+  assert.equal(f.questions.length,6);
+  assert.equal(f.coverage,2);
+  assert.equal(f.origin,'simulation');
+  assert.ok(f.evidenceIds.every(id => quotesFor(p,'c1').some(q => q.id === id)));
+  assert.equal(Object.keys(f.classifications).length,2);
+  assert.equal(JSON.stringify(p),before);
+  const d = draft(p,'verification'); d.finding = f; d.action = 'rename'; d.newLabel = 'Changed label';
+  const originalCodes = JSON.stringify(p.codes), originalAssignments = JSON.stringify(p.assignments);
+  saveReview(p,d);
+  assert.equal(JSON.stringify(p.codes),originalCodes);
+  assert.equal(JSON.stringify(p.assignments),originalAssignments);
+  assert.equal(p.history.at(-1).status,'Under review');
+  assert.equal(p.history.at(-1).codeChanges.length,0);
+  assert.deepEqual(validateBackup(JSON.parse(JSON.stringify(p))).reviews[0].finding,f);
+  saveReview(p,d);
+  assert.equal(p.reviews.length,2);
+});
+
+test('verification handles unused codes and cancellation without a fabricated validity rating', async () => {
+  const p = project();
+  const unused = p.codes.find(c => !quotesFor(p,c.id).length);
+  const f = await verificationProvider.analyze({codeIds:[unused.id],project:p});
+  assert.equal(f.rating,'Insufficient evidence');
+  assert.equal(f.suggestedFields.assessment,'');
+  const controller = new AbortController();
+  const pending = verificationProvider.analyze({codeIds:['c1'],project:p,signal:controller.signal});
+  controller.abort();
+  await assert.rejects(pending,{name:'AbortError'});
+  await assert.rejects(verificationProvider.analyze({codeIds:['missing'],project:p}),/active code/);
+});
 
 const file = (name, headers, rows, kind) => ({name,headers,rows,mapping:guessMapping(headers,kind),bytes:'c291cmNl',metadata:{},sheetName:'Sheet1'});
 function imports() { return {

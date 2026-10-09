@@ -9,7 +9,7 @@ const samples = {
   '/samples/quotations.xlsx': 'Training Data - Quotation Manager.xlsx',
   '/samples/codes.xlsx': 'Training Data - Code Manager.xlsx',
 };
-const types = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.mjs': 'text/javascript', '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' };
+const types = { '.png':'image/png', '.woff2':'font/woff2', '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.mjs': 'text/javascript', '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' };
 export const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, 'http://localhost');
@@ -18,7 +18,7 @@ export const server = http.createServer(async (req, res) => {
     if (!file) {
       const pathname = decodeURIComponent(url.pathname);
       if (pathname === '/') file = 'index.html';
-      else if (/^\/(src|vendor)\/[a-zA-Z0-9._/-]+$/.test(pathname) && !pathname.split('/').includes('..')) file = pathname.slice(1);
+      else if (/^\/(src|vendor|Assets)\/[a-zA-Z0-9._ /-]+$/.test(pathname) && !pathname.split('/').includes('..')) file = pathname.slice(1);
       else { res.writeHead(404).end('Not found'); return; }
     }
     const bytes = await readFile(path.join(root, file));

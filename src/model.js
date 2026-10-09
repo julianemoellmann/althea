@@ -145,12 +145,23 @@ export function commitDecision(project, preview) {
   const hasChanges = preview.codeChanges.length || preview.added.length || preview.removed.length;
   const status = preview.resolution === 'approve' ? (hasChanges ? 'Implemented' : 'Approved') : ({ reject: 'Rejected', defer: 'Deferred', note: 'Note' }[preview.resolution]);
   project.codes = structuredClone(preview.codes); project.assignments = structuredClone(preview.assignments);
-  project.reviews.push({ id: reviewId, ...structuredClone(preview.draft), status, action: preview.action, reviewer: project.reviewer, recordedAt: now });
+  project.reviews.push({ id: reviewId, ...structuredClone(preview.draft), status, reviewStatus: preview.resolution === 'approve' ? 'Approved' : status, implementationStatus: hasChanges ? 'Implemented' : 'Not applicable', action: preview.action, reviewer: project.reviewer, recordedAt: now });
   project.history.push({ id: id('action'), projectId: project.id, reviewId, action: preview.action, status, reviewer: project.reviewer, timestamp: now, rationale: preview.draft.rationale, evidenceIds: [...preview.draft.evidenceIds], affectedCodeIds: preview.affectedCodeIds, codeChanges: structuredClone(preview.codeChanges), removed: structuredClone(preview.removed), added: structuredClone(preview.added) });
   project.revision++; project.updatedAt = now;
   const key = draftKey(preview.draft.module, preview.draft.codeIds);
-  project.drafts[key] = { ...structuredClone(preview.draft), stage: 7, lastReviewId: reviewId };
+  project.drafts[key] = { ...structuredClone(preview.draft), stage: 7, reviewStatus: preview.resolution === 'approve' ? 'Approved' : status, implementationStatus: hasChanges ? 'Implemented' : 'Not applicable', lastReviewId: reviewId };
   return project.history.at(-1);
+}
+export function saveReview(project, draft) {
+  validateDraft(project, draft);
+  const now = new Date().toISOString(), reviewId = id('review');
+  // Saving an assessment is deliberately independent of applying its proposed action.
+  const review = { ...structuredClone(draft), id:reviewId, status:'Under review', reviewStatus:'Under review', implementationStatus:'Not applicable', reviewer:project.reviewer, recordedAt:now };
+  project.reviews.push(review);
+  project.history.push({ id:id('action'), projectId:project.id, reviewId, action:'review', status:'Under review', reviewer:project.reviewer, timestamp:now, rationale:draft.rationale, evidenceIds:[...draft.evidenceIds], affectedCodeIds:[...draft.codeIds], codeChanges:[], removed:[], added:[] });
+  project.drafts[draftKey(draft.module,draft.codeIds)] = { ...structuredClone(draft), lastReviewId:reviewId, reviewStatus:'Under review', stage:5 };
+  project.updatedAt = now;
+  return review;
 }
 export function validateBackup(value) {
   const object = x => x && typeof x === 'object' && !Array.isArray(x);
@@ -171,6 +182,16 @@ export function validateBackup(value) {
   value.quotations.forEach(q => assert(strings(q,['id','text','quotationId','source','coder','created','note']) && Number.isInteger(q.sourceRow), 'Invalid quotation in backup.'));
   value.codes.forEach(c => { assert(strings(c,['id','label','definition','boundary','importedComment','groups','status']) && Array.isArray(c.sourceRows) && typeof c.active === 'boolean' && (!c.parentId || cs.has(c.parentId)), 'Invalid code or parent in backup.'); const seen = new Set([c.id]); let parent = c.parentId; while (parent) { assert(!seen.has(parent), 'The backup has a hierarchy cycle.'); seen.add(parent); parent = value.codes.find(p => p.id === parent)?.parentId; } });
   value.assignments.forEach(a => assert(qs.has(a.quotationId) && value.codes.some(c => c.id === a.codeId && c.active), 'The backup contains a broken coding assignment.'));
+  function validFinding(f) {
+    return object(f) && strings(f,['title','interpretation','provenance']) && object(f.suggestedFields)
+      && Array.isArray(f.evidenceIds) && f.evidenceIds.every(qid => qs.has(qid))
+      && (!f.questions || Array.isArray(f.questions) && f.questions.every(q => strings(q,['question','answer'])))
+      && (!f.classifications || object(f.classifications) && Object.entries(f.classifications).every(([qid,c]) => qs.has(qid) && strings(c,['rating','note'])));
+  }
+  for (const d of [...Object.values(value.drafts),...value.reviews]) {
+    assert(!d.finding || validFinding(d.finding), 'The backup contains an invalid analysis result.');
+    assert(!d.analysisHistory || Array.isArray(d.analysisHistory) && d.analysisHistory.every(validFinding), 'The backup contains invalid analysis history.');
+  }
   function validDraft(draft) {
     return object(draft) && MODULES[draft.module] && strings(draft,['assessment','subgroups','recommendation','core','boundary','explanation','note','rationale','action','newLabel','newCore','newBoundary','targetCodeId','mergeNewLabel','recodeMode']) && Array.isArray(draft.codeIds) && draft.codeIds.every(cid => cid === '' || cs.has(cid)) && Array.isArray(draft.evidenceIds) && draft.evidenceIds.every(qid => qs.has(qid)) && object(draft.classifications) && Object.values(draft.classifications).every(object) && object(draft.representatives) && object(draft.splitAssignments) && Array.isArray(draft.splitLabels) && draft.splitLabels.length === 2 && draft.splitLabels.every(s => typeof s === 'string') && (!draft.finding || (strings(draft.finding,['title','interpretation','provenance']) && object(draft.finding.suggestedFields) && Array.isArray(draft.finding.evidenceIds) && draft.finding.evidenceIds.every(qid => qs.has(qid))));
   }
