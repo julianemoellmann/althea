@@ -163,15 +163,15 @@ The user should be able to inspect all issues before selecting **Prepare data**.
 
 ### 3.0 Analytical scope
 
-Each functionality should state the level at which it operates. The scope determines what the user selects before starting the analysis and what evidence the system examines.
+The first prototype implements three analytical functionalities. These are the only active analysis paths in the initial product version. Additional functionalities may still be presented in the user flow as disabled future options, but they are not part of the prototype scope and are not required for the first release.
 
 | Scope | Meaning | User selects | Functionalities |
 |---|---|---|---|
 | Single-code analysis | Examines one code and all quotations assigned to it | One code | Internal Code Coherence; Verifying Coding; Creating Code Definitions |
-| Selected multi-code analysis | Examines a chosen pair or group of related codes | Two or more codes, usually selected by the user | Comparing Codes; Code Hierarchy Suggestions |
-| Whole-dataset analysis | Looks for patterns, inconsistencies, or relationships across the complete quotation-per-code dataset | The whole dataset | Cross-Code Coding Consistency; Category / Pattern Code Generation; Relational and Process Analysis |
+| Selected multi-code analysis | Examines a chosen pair or group of related codes | Two or more codes, usually selected by the user | Future option only: Comparing Codes; Code Hierarchy Suggestions (displayed as disabled in the UI) |
+| Whole-dataset analysis | Looks for patterns, inconsistencies, or relationships across the complete quotation-per-code dataset | The whole dataset | Future option only: Cross-Code Coding Consistency; Category / Pattern Code Generation; Relational and Process Analysis (displayed as disabled in the UI) |
 
-The third scope always operates across the complete quotation-per-code dataset. The user does not select a subset at this scope; the system uses all available codes and quotation-code assignments to identify recurring patterns, co-occurrences, or inconsistencies. The selected scope should always be visible before the analysis starts.
+The prototype focuses on the single-code analysis path. The other scopes are reserved for later implementation and should be made visible as disabled or unavailable options in the user interface, rather than treated as active functionality in the first version. The selected scope should always be visible before the analysis starts.
 
 ### 3.1 Internal Code Coherence
 
@@ -312,7 +312,7 @@ Possible actions include:
 
 This review can be conducted manually by the researcher or discussed in a team coding session. Its output can inform later code-definition and code-comparison work, but it should remain a separate review record.
 
-#### Functionality-specific workflow
+#### 3.2.6 Functionality-specific workflow
 
 - **Scope:** Single code.
 - **User question:** Do the quotations assigned to a code support its label and intended meaning?
@@ -448,21 +448,6 @@ Example output:
 
 These examples provide the evidence base for a strong definition and make the code's meaning easier to discuss and compare across researchers.
 
-#### 3.3.8 ATLAS.ti write-back reference
-
-The possible transfer of an approved definition or other reviewed change back into ATLAS.ti is governed by [Section 4.7: ATLAS.ti Integration and Write-back](#47-atlasti-integration-and-write-back). This functionality only generates a candidate change; it does not apply the change automatically.
-
-#### Functionality-specific workflow
-
-- **Scope:** Single code.
-- **User question:** What does this code mean, and where are its boundaries?
-- **Input and evidence:** One selected code, its quotations, existing definition or comment, and representative quotations.
-- **User actions:** Review the evidence, identify the core concept, draft or edit the definition, test it against representative quotations, and approve, edit, reject, or defer it.
-- **System output:** Candidate definition, boundary rule, representative quotations, quality checks, and approval status.
-- **Possible adaptation:** Submit the approved definition to the ATLAS.ti write-back process described in [Section 4.7](#47-atlasti-integration-and-write-back). An unapproved definition remains only in the review record.
-
-The definition review should record the previous definition, the proposed definition, the researcher's decision, and the rationale. The definition remains a suggestion until the researcher approves the exact wording.
-
 ---
 
 ## 4. User Actions and Database Adaptations
@@ -516,16 +501,13 @@ The raw imported data should remain unchanged. Adaptations should be stored as r
 
 ### 4.4 Mapping functionalities to user actions
 
+The first prototype supports the three single-code functionalities listed below. The remaining modules are reserved for future development and should appear in the interface only as disabled or future options, not as active review paths.
+
 | Functionality | Possible researcher actions | Possible database adaptations |
 |---|---|---|
 | Internal Code Coherence | Keep, refine, split, rename, or retire a code | Update code status or definition; create subcodes; preserve affected-code history |
 | Verifying Coding | Keep, recode, flag as borderline, or reject the suggestion | Add or remove quotation-code assignments; save evidence and rationale |
 | Creating Code Definitions | Approve, edit, reject, or defer a definition | Submit the approved definition to the [ATLAS.ti write-back process](#47-atlasti-integration-and-write-back) |
-| Comparing Codes | Keep separate, refine boundaries, merge, or create hierarchy | Update definitions, code relationships, or merge history |
-| Cross-Code Coding Consistency | Confirm distinction, normalize coding, or investigate further | Update quotation-code assignments or boundary rules |
-| Code Hierarchy Suggestions | Approve, edit, reject, or defer a hierarchy | Create or revise parent-child and sibling relationships |
-| Category / Pattern Code Generation | Approve, rename, revise, or reject a category | Create a category or pattern code and link its contributing codes |
-| Relational and Process Analysis | Approve, qualify, reject, or defer a relationship | Save a reviewed relationship with evidence, direction, confidence, and status |
 
 ### 4.5 Audit trail and version history
 
@@ -566,6 +548,20 @@ The system identifies that `Access barriers` contains two recurring subgroups: f
 5. **Audit record:** The system stores the original code, new codes, affected quotations, evidence, researcher, timestamp, and rationale.
 
 The same pattern applies to smaller changes, such as approving a revised definition or rejecting a suggested relationship.
+
+### 4.7 ATLAS.ti Integration and Write-back
+
+Approved changes that are intended for synchronization back into ATLAS.ti should pass through a dedicated write-back step. This step should keep the researcher in control of the final transfer and should preserve a clear separation between local review and database modification.
+
+The system should support:
+
+- a clear preview of the candidate write-back,
+- confirmation before any change is pushed back to ATLAS.ti,
+- preservation of the previous state and rationale,
+- traceability between the approved suggestion and the write-back action,
+- a fallback to manual review when the automatic write-back is not available or the change cannot be applied safely.
+
+This section applies only to approved adaptations and does not change the status of rejected or deferred suggestions.
 
 ## 5. Core User Journey
 
@@ -642,11 +638,13 @@ The system creates the normalized quotation-per-code overview described in [Sect
 - duplicate and invalid entries are flagged,
 - the original imported data remains preserved.
 
-#### Step 3: Select the analysis scope
+#### Step 3: Select the analytical scope
 
-Once preparation is complete, the user first selects the level at which the analysis should operate. The scope determines what the user selects next and which functionalities are available.
+Once preparation is complete, the user selects the analytical level at which the review should operate. The chosen scope determines both the next selection and the set of compatible functionalities. The prototype exposes three active analytical functions, while additional modules may be shown as disabled future options so the user understands the broader product roadmap.
 
-The user can return to data preparation without losing the prepared dataset or existing review decisions.
+The interface should display the analytical levels in a clear, comparable form, with each level showing its active or future functionalities. Only the implemented functions should be selectable in the current prototype. Future modules should appear visibly disabled or greyed out, without being active review paths. The user must choose exactly one scope before continuing to the next step.
+
+The user can return to data preparation at any time without losing the prepared dataset or existing review decisions.
 
 #### Step 4: Choose a functional review path
 
