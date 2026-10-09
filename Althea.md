@@ -313,37 +313,7 @@ For each code, ask:
 
 The researcher should compare the code label against the actual content of the quotations and decide whether the label is a good fit, a partial fit, or a misfit.
 
-#### 3.2.4 Quotation outlier detection
-
-Within each code, identify quotations that are conceptually different from the majority of quotations assigned to that code. This is not the same as checking whether a quotation fits the code in general; it focuses on unusual cases within an otherwise similar group.
-
-The purpose is to detect quotations that may:
-
-- be miscoded,
-- represent a legitimate borderline case,
-- indicate a rare but valid subtype,
-- reveal that the code definition is too narrow or too broad,
-- suggest that the code should be split or redefined.
-
-Questions to ask
-
-- Does this quotation share the core meaning of the code?
-- Is it conceptually close to the dominant pattern or does it express a different phenomenon?
-- Is it an exception that should remain under the code?
-- Would the quotation fit another code better?
-- Does the quotation suggest that the code definition needs revision?
-
-Example output
-
-> **Potential outlier**  
-> **Code:** Access barriers  
-> **Quotation:** "The waiting time and bureaucracy made the service feel unusable."  
-> Most quotations concern concrete obstacles to obtaining services. This quotation concerns dissatisfaction with service quality rather than access itself.  
-> **Possible interpretations:** miscoding, boundary case, or definition expansion.
-
-An outlier should not automatically be treated as an error. It may instead represent a rare instance, a boundary case, or evidence that the code is broader than currently defined.
-
-#### 3.2.5 Validity rating
+#### 3.2.4 Validity rating
 
 Assign one of the following ratings to the code:
 
@@ -353,7 +323,7 @@ Assign one of the following ratings to the code:
 
 A code can be rated as **[WEAK/MISALIGNED]** even if it has many quotations, if the quotations are not conceptually coherent or if the label is not the best fit.
 
-#### 3.2.6 Output of the review
+#### 3.2.5 Output of the review
 
 For each reviewed code, document:
 
@@ -372,8 +342,6 @@ Possible actions include:
 - Merge with a related code: if the code overlaps substantially with another code.
 - Keep the code as is: if the quotations clearly and consistently support it.
 
-#### 3.2.7 Review table template
-
 | Code | Number of quotations | Rating | Evidence from quotations | Interpretation | Recommended action |
 |---|---:|---|---|---|---|
 | Example code | 18 | [STRONG] | Quotations clearly mention barriers to access and trust | Code is conceptually coherent | Keep as is |
@@ -390,45 +358,6 @@ This review can be conducted manually by the researcher or discussed in a team c
 - **User actions:** Review the evidence, classify quotations as strong, borderline, or outlying, assess validity, and select a recommendation.
 - **System output:** Evidence summary, validity rating, outlier list, and recommended action.
 - **Possible adaptation:** Keep the code, recode quotations, refine the definition, rename, split, merge, or defer the decision. See [Section 4](#4-user-actions-and-database-adaptations).
-
-#### 3.2.8 Mockup: Verifying Coding review
-
-```text
-(5) Verifying Coding
-+--------------------------------------------------+
-| Project: Access Study             Step 5 of 7    |
-+--------------------------------------------------+
-| Scope: Single code                              |
-| Function: Verifying Coding                      |
-|                                                  |
-| Code                                             |
-| [Access barriers                         v]      |
-| Current label: Access barriers                  |
-| 42 quotations | Definition: Not approved         |
-|                                                  |
-| Evidence review                                 |
-| [All] [Strong match] [Borderline] [Outlier]     |
-|                                                  |
-| [!] Potential borderline quotation              |
-| "The waiting time made the service unusable."   |
-| Current code: Access barriers                   |
-| Why flagged: May concern service quality rather  |
-| than an obstacle to accessing the service.       |
-|                                                  |
-| [ ] Strong match   [ ] Borderline   [ ] Outlier |
-|                                                  |
-| Validity assessment                             |
-| MODERATE                                        |
-| Most quotations support the label; some cases   |
-| require boundary clarification.                 |
-|                                                  |
-| Suggested action                                |
-| [Keep] [Recode quotation] [Refine definition]   |
-| [Rename] [Split] [Defer]                        |
-|                                                  |
-| [Back to functions]       [Save review]         |
-+--------------------------------------------------+
-```
 
 The evidence view should allow the researcher to inspect the full quotation, source, current code, and review note before classifying a quotation. **Save review** records the assessment; it does not automatically recode quotations or change the codebook. Approved changes follow [Section 4](#4-user-actions-and-database-adaptations).
 
