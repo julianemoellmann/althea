@@ -329,7 +329,7 @@ The evidence view should allow the researcher to inspect the full quotation, sou
 
 A code definition is a brief, explicit statement that explains what the code means and when it should be used. The definition should be grounded in the quotations assigned to the code and should be precise enough to help researchers apply the code consistently across the dataset.
 
-This functionality turns the evidence from [Internal Code Coherence](#31-internal-code-coherence) and [Verifying Coding](#32-verifying-coding) into a concise, reusable coding rule. It drafts a definition; it does not decide the final wording or write it back to ATLAS.ti automatically.
+This functionality turns the evidence from [Internal Code Coherence](#31-internal-code-coherence) and [Verifying Coding](#32-verifying-coding) into a concise, reusable coding rule. It drafts a definition; it does not decide the final wording.
 
 #### 3.3.1 Purpose
 
@@ -507,7 +507,7 @@ The first prototype supports the three single-code functionalities listed below.
 |---|---|---|
 | Internal Code Coherence | Keep, refine, split, rename, or retire a code | Update code status or definition; create subcodes; preserve affected-code history |
 | Verifying Coding | Keep, recode, flag as borderline, or reject the suggestion | Add or remove quotation-code assignments; save evidence and rationale |
-| Creating Code Definitions | Approve, edit, reject, or defer a definition | Submit the approved definition to the [ATLAS.ti write-back process](#47-atlasti-integration-and-write-back) |
+| Creating Code Definitions | Approve, edit, reject, or defer a definition | Add the approved definition to the project database |
 
 ### 4.5 Audit trail and version history
 
@@ -549,19 +549,6 @@ The system identifies that `Access barriers` contains two recurring subgroups: f
 
 The same pattern applies to smaller changes, such as approving a revised definition or rejecting a suggested relationship.
 
-### 4.7 ATLAS.ti Integration and Write-back
-
-Approved changes that are intended for synchronization back into ATLAS.ti should pass through a dedicated write-back step. This step should keep the researcher in control of the final transfer and should preserve a clear separation between local review and database modification.
-
-The system should support:
-
-- a clear preview of the candidate write-back,
-- confirmation before any change is pushed back to ATLAS.ti,
-- preservation of the previous state and rationale,
-- traceability between the approved suggestion and the write-back action,
-- a fallback to manual review when the automatic write-back is not available or the change cannot be applied safely.
-
-This section applies only to approved adaptations and does not change the status of rejected or deferred suggestions.
 
 ## 5. Core User Journey
 
