@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { readExport, prepareImports, guessMapping, parseCsv, csv } from '../src/data.js';
-import { createProject, emptyDraft, previewDecision, commitDecision, validateBackup, quotesFor, countWords } from '../src/model.js';
+import { readExport, prepareImports, groupIssues, ISSUE_HELP, guessMapping, parseCsv, csv } from '../src/data.js';
+import { createProject, prepareProject, isPrepared, emptyDraft, previewDecision, commitDecision, reopenSuggestion, deferredSuggestions, moveQuotation, canTransition, statusLabel, validateBackup, quotesFor, countWords, draftKey } from '../src/model.js';
 import { exampleProvider } from '../src/analysis.js';
-import { verificationProvider } from '../src/verification.js';
+import { verificationProvider, simulationProviders } from '../src/verification.js';
 import { saveReview } from '../src/model.js';
 
 test('verification supplies six evidence-linked questions without modifying project or researcher assessment', async () => {
@@ -54,31 +54,37 @@ function project() { const source = imports(); return createProject('Test projec
 function draft(p, module='coherence', ids=['c1']) { return {...emptyDraft(p,module,ids),assessment:'Moderate',overlap:4,rationale:'The selected quotations support this decision.',evidenceIds:['q2']}; }
 const bytes = text => new TextEncoder().encode(text);
 
-test('actual exports reconcile and preserve original bytes and hierarchy', async () => {
+test('the mockup training exports reconcile, keep original bytes, and support every simulated function', async () => {
   const qBytes = new Uint8Array(await readFile(new URL('../Training Data - Quotation Manager.xlsx',import.meta.url)));
   const cBytes = new Uint8Array(await readFile(new URL('../Training Data - Code Manager.xlsx',import.meta.url)));
   const quotation = await readExport(qBytes,'Quotation Manager.xlsx','quotation');
   const codes = await readExport(cBytes,'Code Manager.xlsx','codes');
   const result = prepareImports({quotation,codes});
-  assert.deepEqual(result.summary,{quotations:1905,codes:2934,codeRows:2970,sources:124,assignments:6834,multiCode:1905,duplicateGroups:13,unusedCodes:370});
-  assert.equal(result.issues.filter(i => i.needsGrouping).length,13);
-  assert.equal(result.issues.filter(i => i.severity === 'error' || i.type === 'Code absent from manager').length,0);
+  assert.deepEqual(result.summary,{quotations:189,codes:10,codeRows:10,sources:94,assignments:203,multiCode:13,duplicateGroups:0,unusedCodes:0});
+  assert.equal(result.issues.filter(i => i.severity === 'error').length,0);
+  assert.equal(result.issues.filter(i => i.type === 'Blank Codes field').length,0);
+  // The corrected exports agree: every code's Groundedness matches its assignments in the Quotation Manager.
+  assert.deepEqual(result.issues.filter(i => i.type === 'Groundedness differs').map(i => i.where),[]);
+  assert.deepEqual(groupIssues(result.issues).map(g => [g.type,g.count]),[]);
+  assert(result.quotations.every(q => q.coder === 'Jane Doe'));
   assert.equal(Buffer.from(quotation.bytes,'base64').compare(qBytes),0);
-  assert.equal(result.quotations[0].created,'2026-08-13 12:19:20');
-  assert.equal(quotation.metadata.Project,'Training Data');
-  const child = result.codes.find(c => c.label === 'Adaptability (2): Control in decision-making');
-  assert.equal(result.codes.find(c => c.id === child.parentId).label,'Adaptability (2)');
-  assert.throws(() => createProject('Sample',{quotation,codes},result,'Reviewer',false),/group/);
-  const p = createProject('Sample',{quotation,codes},result,'Reviewer',true);
-  assert.equal(validateBackup(JSON.parse(JSON.stringify(p))).quotations.length,1905);
-  const authenticity = p.codes.find(c => c.label === 'Authenticity');
-  for (const module of ['coherence','verification','definition','comparison']) {
-    const finding = await exampleProvider.analyze({module,codeIds:[authenticity.id],project:p});
-    assert.equal(finding.origin,'example');
-    assert.equal(finding.evidenceIds.length,3);
-    assert(finding.evidenceIds.every(qid => quotesFor(p,authenticity.id).some(q => q.id === qid)));
+  assert.equal(result.quotations[0].created,'2026-08-13 16:38:43');
+  assert.equal(quotation.metadata.Project,'Mockup-Training Data');
+  assert(result.codes.every(c => !c.parentId));
+  const p = createProject('Sample',{quotation,codes},result,'Reviewer',false);
+  assert.equal(isPrepared(p),false);
+  prepareProject(p);
+  assert.equal(validateBackup(JSON.parse(JSON.stringify(p))).quotations.length,189);
+  const before = JSON.stringify(p);
+  for (const code of p.codes) for (const [module,provider] of Object.entries(simulationProviders)) {
+    const finding = await provider.analyze({module,codeIds:[code.id],project:p});
+    assert.equal(finding.origin,'simulation');
+    for (const key of ['evidenceSummary','interpretation','confidence','suggestion']) assert.equal(typeof finding[key],'string');
+    assert(finding.evidenceIds.every(qid => quotesFor(p,code.id).some(q => q.id === qid)));
+    assert.equal(Object.keys(finding.classifications).length,quotesFor(p,code.id).length);
     if (module === 'definition') assert(countWords(finding.suggestedFields.core + ' ' + finding.suggestedFields.boundary) <= 50);
   }
+  assert.equal(JSON.stringify(p),before);
 });
 test('CSV handles quoted commas, escaped quotes, CRLF, multiline text, and semicolon files', () => {
   assert.deepEqual(parseCsv('A,B\r\n1,"line one\nline ""two"", more"\r\n'),[['A','B'],['1','line one\nline "two", more']]);
@@ -118,14 +124,14 @@ test('uncoded quotations and duplicate quotation identifiers stay separate', () 
   assert.equal(result.quotations.length,3);
   assert.equal(new Set(result.quotations.map(q => q.id)).size,3);
   assert(result.issues.some(i => i.type === 'Duplicate quotation ID'));
-  assert(result.issues.some(i => i.type === 'Uncoded quotation'));
+  assert(result.issues.some(i => i.type === 'Blank Codes field'));
 });
 test('duplicate assignments deduplicate per row and known delimiter-bearing labels stay intact', () => {
   const input = imports(); input.quotation.rows[0][2] = 'Voice, Voice, Art, music'; input.codes.rows.push(['○ Art, music','',1,'']);
   const result = prepareImports(input);
   assert.equal(result.assignments.filter(a => a.quotationId === 'q2').length,2);
-  assert(result.issues.some(i => i.type === 'Duplicate assignment'));
-  assert(!result.issues.some(i => i.type === 'Code absent from manager'));
+  assert(result.issues.some(i => i.type === 'Duplicate quotation–code pair'));
+  assert(!result.issues.some(i => i.type === 'Code absent from Code Manager'));
 });
 test('preview is side effect free and commit records exact rename with unchanged originals', () => {
   const p = project(), original = JSON.stringify(p), d = {...draft(p),action:'rename',newLabel:'Personal voice'};
@@ -139,7 +145,9 @@ test('preview is side effect free and commit records exact rename with unchanged
   assert.equal(p.codes[1].parentLabel,'Personal voice');
   assert.equal(JSON.stringify([p.imports,p.original]),originals);
   assert.equal(p.history[0].reviewer,'Test reviewer');
-  assert.equal(p.history[0].status,'Implemented');
+  assert.equal(p.history[0].status,'Approved');
+  assert.equal(p.history[0].implementationStatus,'Applied');
+  assert.equal(statusLabel(p.reviews[0]),'Approved and applied');
   assert.throws(() => commitDecision(p,preview),/changed after/);
 });
 test('keep, reject, defer, and note record without altering working coding', () => {
@@ -261,4 +269,143 @@ test('example provider has no generic fabricated findings and respects cancellat
   assert.equal(await exampleProvider.analyze({module:'coherence',codeIds:['c1'],project:project()}),null);
   const controller = new AbortController(); controller.abort();
   await assert.rejects(exampleProvider.analyze({module:'coherence',codeIds:['c1'],project:project(),signal:controller.signal}),{name:'AbortError'});
+});
+
+test('suggestions follow the state machine: defer and reopen, but approved and rejected are final', () => {
+  assert(canTransition('Under review','Approved') && canTransition('Deferred','Under review'));
+  assert(!canTransition('Deferred','Approved') && !canTransition('Approved','Rejected') && !canTransition('Rejected','Under review'));
+  assert.equal(statusLabel({status:'Implemented',implementationStatus:'Implemented'}),'Approved and applied');
+  const p = project(), d = draft(p), key = draftKey(d.module,d.codeIds), before = JSON.stringify([p.codes,p.assignments]);
+  commitDecision(p,previewDecision(p,d,'defer'));
+  assert.equal(JSON.stringify([p.codes,p.assignments]),before);
+  assert.deepEqual(deferredSuggestions(p).map(x => x.key),[key]);
+  assert.throws(() => previewDecision(p,p.drafts[key],'approve'),/cannot become Approved/);
+  reopenSuggestion(p,key);
+  assert.equal(p.drafts[key].reviewStatus,'Under review');
+  assert.equal(p.history.at(-1).action,'reopen');
+  assert.equal(deferredSuggestions(p).length,0);
+  assert.throws(() => reopenSuggestion(p,key),/Only deferred/);
+  commitDecision(p,previewDecision(p,p.drafts[key],'reject'));
+  assert.equal(p.drafts[key].reviewStatus,'Rejected');
+  assert.throws(() => previewDecision(p,p.drafts[key],'defer'),/cannot become Deferred/);
+  assert.equal(JSON.stringify([p.codes,p.assignments]),before);
+  assert.equal(validateBackup(JSON.parse(JSON.stringify(p))).history.length,3);
+});
+test('preparation is a separate step and blocking errors prevent it', () => {
+  const p = project();
+  assert.equal(isPrepared(p),false);
+  assert(p.preparation.issues.every(i => i.status === 'Open'));
+  prepareProject(p); assert(isPrepared(p) && p.preparation.preparedAt);
+  p.preparation.issues.push({severity:'error',type:'Missing column'});
+  assert.throws(() => prepareProject(p),/blocking/);
+  const legacy = project(); delete legacy.preparation.prepared; assert(isPrepared(legacy));
+});
+test('selected quotation changes are applied; unselected ones leave the data alone', () => {
+  const p = project(), d = {...draft(p,'verification'),action:'definition',newCore:'Personal creative voice.',newBoundary:'Exclude efficiency alone.',evidenceIds:['q2','q3'],
+    quotationChanges:{q2:{op:'remove',include:true},q3:{op:'flag',include:false}}};
+  const preview = previewDecision(p,d);
+  assert.equal(preview.removed.length,1); assert.equal(preview.flagged.length,0);
+  commitDecision(p,preview);
+  assert(!p.assignments.some(a => a.quotationId === 'q2' && a.codeId === 'c1'));
+  assert(p.assignments.some(a => a.quotationId === 'q2' && a.codeId === 'c3'));
+  assert(!p.assignments.find(a => a.quotationId === 'q3' && a.codeId === 'c1').flag);
+  assert.equal(p.codes[0].definition,'Personal creative voice.');
+  assert.equal(p.history[0].removed.length,1);
+  assert.equal(validateBackup(JSON.parse(JSON.stringify(p))).assignments.length,p.assignments.length);
+});
+test('flag as borderline keeps assignments and requires a flagged quotation', () => {
+  const p = project(), d = {...draft(p,'verification'),action:'borderline',evidenceIds:['q2','q3']};
+  assert.throws(() => previewDecision(p,d),/at least one/);
+  d.quotationChanges = {q3:{op:'flag',include:true}};
+  const preview = previewDecision(p,d);
+  assert.deepEqual(preview.flagged,[{quotationId:'q3',codeId:'c1',flag:'borderline'}]);
+  assert.equal(preview.removed.length + preview.added.length,0);
+  commitDecision(p,preview);
+  assert.equal(p.assignments.find(a => a.quotationId === 'q3' && a.codeId === 'c1').flag,'borderline');
+  assert.equal(p.history[0].implementationStatus,'Applied');
+  assert.equal(validateBackup(JSON.parse(JSON.stringify(p))).assignments.length,4);
+});
+test('recoding outlying quotations moves only the selected ones to the target code', () => {
+  const p = project(), d = {...draft(p,'verification'),action:'recode',evidenceIds:['q2','q3'],quotationChanges:{q3:{op:'recode',include:true,targetCodeId:'c2'}}};
+  commitDecision(p,previewDecision(p,d));
+  assert(p.assignments.some(a => a.quotationId === 'q3' && a.codeId === 'c2'));
+  assert(!p.assignments.some(a => a.quotationId === 'q3' && a.codeId === 'c1'));
+  assert(p.assignments.some(a => a.quotationId === 'q2' && a.codeId === 'c1'));
+});
+test('retiring a code archives it, removes its assignments and lifts its children', () => {
+  const p = project(), preview = previewDecision(p,{...draft(p),action:'retire'});
+  assert.equal(preview.removed.length,2);
+  commitDecision(p,preview);
+  const voice = p.codes.find(c => c.id === 'c1');
+  assert.equal(voice.active,false); assert.equal(voice.retired,true); assert.equal(voice.status,'Retired');
+  assert.equal(p.codes.find(c => c.id === 'c2').parentId,null);
+  assert(!p.assignments.some(a => a.codeId === 'c1'));
+  assert(p.assignments.some(a => a.quotationId === 'q2' && a.codeId === 'c3'));
+  assert.equal(validateBackup(JSON.parse(JSON.stringify(p))).codes.length,3);
+});
+test('a groundedness that disagrees with the quotation export is a warning', () => {
+  const input = imports(); input.codes.rows[0][2] = 5;
+  const result = prepareImports(input);
+  const issue = result.issues.find(i => i.type === 'Groundedness differs');
+  assert.equal(issue.severity,'warning');
+  assert.match(issue.message,/reports 5 quotations.*has 2/);
+});
+
+test('every issue the import can raise comes with an explanation', async () => {
+  const source = await readFile(new URL('../src/data.js',import.meta.url),'utf8');
+  const types = [...source.matchAll(/issue\('(?:error|warning)', '([^']+)'/g)].map(m => m[1]);
+  assert(types.length > 15);
+  for (const type of types) assert(ISSUE_HELP[type], `No explanation for ${type}`);
+});
+test('deferring needs no rationale, but approving and rejecting still do', () => {
+  const p = project(), d = {...draft(p),rationale:''};
+  commitDecision(p,previewDecision(p,d,'defer'));
+  assert.equal(p.history[0].status,'Deferred');
+  assert.equal(p.history[0].rationale,'');
+  assert.equal(validateBackup(JSON.parse(JSON.stringify(p))).history.length,1);
+  const q = project();
+  assert.throws(() => previewDecision(q,{...draft(q),rationale:''},'reject'),/rationale/);
+  assert.throws(() => previewDecision(q,{...draft(q),rationale:''},'approve'),/rationale/);
+});
+test('quotations can move to a new code; quotations given the same new name share one code', () => {
+  const p = project(), d = {...draft(p,'verification'),action:'recode',evidenceIds:['q2','q3'],
+    quotationChanges:{q2:{op:'newcode',label:'Personal style',include:true},q3:{op:'newcode',label:' Personal style ',include:true}}};
+  const preview = previewDecision(p,d);
+  assert.equal(preview.codeChanges.filter(c => !c.before).length,1);
+  commitDecision(p,preview);
+  const created = p.codes.find(c => c.label === 'Personal style');
+  assert.equal(created.parentId,null);
+  assert.deepEqual(p.assignments.filter(a => a.codeId === created.id).map(a => a.quotationId).sort(),['q2','q3']);
+  assert(!p.assignments.some(a => a.codeId === 'c1'));
+  assert(p.assignments.some(a => a.quotationId === 'q2' && a.codeId === 'c3'));
+  assert.equal(validateBackup(JSON.parse(JSON.stringify(p))).codes.length,4);
+  const q = project();
+  assert.throws(() => previewDecision(q,{...draft(q),quotationChanges:{q2:{op:'newcode',label:'Expression',include:true}}}),/already exists/);
+  assert.throws(() => previewDecision(q,{...draft(q),quotationChanges:{q2:{op:'newcode',label:'',include:true}}}),/name for the new code/);
+});
+
+test('saving a quotation move applies it at once, records it, and leaves the code suggestion open', () => {
+  const p = project(), d = draft(p,'verification'); p.drafts[draftKey(d.module,d.codeIds)] = d; d.reviewStatus = 'Under review';
+  const originals = JSON.stringify([p.imports,p.original]);
+  const { target } = moveQuotation(p,d,'q3',{choice:'existing',targetCodeId:'c2'});
+  assert.equal(target.id,'c2');
+  assert(p.assignments.some(a => a.quotationId === 'q3' && a.codeId === 'c2'));
+  assert(!p.assignments.some(a => a.quotationId === 'q3' && a.codeId === 'c1'));
+  assert.equal(p.history.at(-1).action,'move');
+  assert.equal(statusLabel(p.history.at(-1)),'Approved and applied');
+  assert.deepEqual(p.history.at(-1).removed,[{quotationId:'q3',codeId:'c1'}]);
+  assert.equal(p.drafts[draftKey(d.module,d.codeIds)].reviewStatus,'Under review');
+  assert.equal(JSON.stringify([p.imports,p.original]),originals);
+  // Moving to a code the quotation already has just removes the duplicate.
+  const result = moveQuotation(p,d,'q2',{choice:'existing',targetCodeId:'c3'});
+  assert.equal(result.alreadyThere,true);
+  assert.equal(p.assignments.filter(a => a.quotationId === 'q2').length,1);
+  assert.equal(p.history.at(-1).added.length,0);
+  const q = project(), e = draft(q,'verification');
+  moveQuotation(q,e,'q2',{choice:'new',newLabel:'Personal style'});
+  assert(q.assignments.some(a => a.quotationId === 'q2' && a.codeId === q.codes.find(c => c.label === 'Personal style').id));
+  assert.throws(() => moveQuotation(q,e,'q2',{choice:'existing',targetCodeId:'c2'}),/no longer belongs/);
+  assert.throws(() => moveQuotation(q,e,'q3',{choice:'new',newLabel:'Expression'}),/already exists/);
+  assert.equal(validateBackup(JSON.parse(JSON.stringify(q))).history.length,1);
+  assert.equal(validateBackup(JSON.parse(JSON.stringify(p))).history.length,2);
 });

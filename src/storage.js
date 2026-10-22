@@ -16,6 +16,24 @@ export async function saveProject(project) {
     transaction.onerror = transaction.onabort = () => reject(transaction.error || new Error('The browser could not save this project.'));
   });
 }
+export async function deleteProject(id) {
+  const db = await database();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction('projects', 'readwrite');
+    transaction.objectStore('projects').delete(id);
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = transaction.onabort = () => reject(transaction.error || new Error('The browser could not delete this project.'));
+  });
+}
+export async function deleteAllProjects() {
+  const db = await database();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction('projects', 'readwrite');
+    transaction.objectStore('projects').clear();
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = transaction.onabort = () => reject(transaction.error || new Error('The browser could not delete the saved projects.'));
+  });
+}
 export async function allProjects() {
   const db = await database();
   return new Promise((resolve, reject) => {

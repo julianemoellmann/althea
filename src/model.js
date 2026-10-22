@@ -1,9 +1,25 @@
 export const MODULES = {
-  coherence: { title: 'Internal code coherence', short: 'Coherence', question: 'Do these quotations share a conceptual core?' },
-  verification: { title: 'Coding verification', short: 'Verification', question: 'Do the quotations support this code and its meaning?' },
-  definition: { title: 'Code definitions', short: 'Definition', question: 'What belongs inside this code, and what falls outside it?' },
-  comparison: { title: 'Code comparison', short: 'Comparison', question: 'Where do these codes overlap, and how do they differ?' },
+  coherence: { title: 'Internal Code Coherence', short: 'Coherence', scope: 'single', question: 'Do the quotations share one conceptual core?', classes: ['Core', 'Peripheral', 'Outlying'], ratings: ['Strong', 'Moderate', 'Weak'] },
+  verification: { title: 'Verifying Coding', short: 'Verification', scope: 'single', question: 'Do the quotations support the label and its intended meaning?', classes: ['Strong', 'Borderline', 'Outlying'], ratings: ['Strong', 'Moderate', 'Weak'] },
+  definition: { title: 'Creating Code Definitions', short: 'Definition', scope: 'single', question: 'Draft a core concept and a boundary rule, 50 words at most.', classes: ['Prototypical', 'Borderline', 'Atypical'], ratings: [] },
+  comparison: { title: 'Comparing Codes', short: 'Comparison', scope: 'multi', question: 'Where do these codes overlap, and how do they differ?', classes: [], ratings: [] },
 };
+export const SCOPES = {
+  single: { title: 'Single code', description: 'One code and all quotations assigned to it.', available: true, functions: ['Internal Code Coherence', 'Verifying Coding', 'Creating Code Definitions'] },
+  multi: { title: 'Selected multi-code', description: 'A chosen pair or group of related codes.', available: false, functions: ['Comparing Codes', 'Code Hierarchy Suggestions'] },
+  dataset: { title: 'Whole dataset', description: 'Patterns across the full quotation-per-code table.', available: false, functions: ['Cross-Code Coding Consistency', 'Category / Pattern Code Generation', 'Relational and Process Analysis'] },
+};
+export const ACTIONS = { keep: 'Keep code as is', rename: 'Rename code', definition: 'Refine definition', subcode: 'Create subcode', retire: 'Retire code', split: 'Split code', merge: 'Merge codes', recode: 'Recode quotation', borderline: 'Flag as borderline' };
+// Suggestion lifecycle: every finding starts Under review; approve (after confirmation), reject and defer
+// resolve it; a deferred suggestion can be reopened. Applying a change is part of approving, not a status.
+export const STATUSES = ['Under review', 'Approved', 'Deferred', 'Rejected'];
+const TRANSITIONS = { 'Under review': ['Under review', 'Approved', 'Deferred', 'Rejected'], Deferred: ['Under review'], Approved: [], Rejected: [] };
+export function normalStatus(status) { return status === 'Implemented' ? 'Approved' : status; }
+export function canTransition(from, to) { return (TRANSITIONS[normalStatus(from) || 'Under review'] || []).includes(to); }
+export function statusLabel(record) {
+  const status = normalStatus(record?.status ?? record?.reviewStatus);
+  return status === 'Approved' && ['Applied', 'Implemented'].includes(record.implementationStatus) ? 'Approved and applied' : status || 'Not reviewed';
+}
 export const id = prefix => `${prefix}-${crypto.randomUUID()}`;
 export const countWords = text => String(text || '').trim().split(/\s+/u).filter(Boolean).length;
 export const activeCodes = project => project?.codes.filter(c => c.active) || [];
@@ -20,14 +36,21 @@ export function createProject(name, imports, prepared, reviewer, grouped) {
   if (prepared.summary.duplicateGroups && !grouped) throw new Error('Confirm how duplicate code labels should be grouped.');
   const now = new Date().toISOString();
   return { schemaVersion: 1, id: id('project'), name: name.trim(), reviewer: reviewer.trim(), createdAt: now, updatedAt: now, revision: 0,
-    imports: structuredClone(imports), preparation: { ...structuredClone(prepared.summary), delimiter: prepared.delimiter, childColumn: prepared.childColumn, preparedAt: now, groupedDuplicateLabels: grouped, issues: prepared.issues.map(i => ({ ...i, status: i.needsGrouping ? 'Grouped with source rows retained' : 'Reviewed; retained' })) },
+    imports: structuredClone(imports), preparation: { ...structuredClone(prepared.summary), delimiter: prepared.delimiter, childColumn: prepared.childColumn, prepared: false, preparedAt: null, groupedDuplicateLabels: grouped, issues: structuredClone(prepared.issues), issueStatus: Object.fromEntries(prepared.issues.filter(i => i.needsGrouping).map(i => [`${i.type}|${i.file}`, 'Resolved'])) },
     quotations: structuredClone(prepared.quotations), codes: structuredClone(prepared.codes), assignments: structuredClone(prepared.assignments),
-    original: { codes: structuredClone(prepared.codes), assignments: structuredClone(prepared.assignments) }, reviews: [], history: [], drafts: {}, ui: { view: 'overview', module: 'coherence', codeId: prepared.codes.find(c => c.label === 'Authenticity')?.id || prepared.codes[0]?.id || '', secondCodeId: prepared.codes.find(c => c.label === 'Creative expression')?.id || prepared.codes[1]?.id || '', filters: {}, scroll: {} } };
+    original: { codes: structuredClone(prepared.codes), assignments: structuredClone(prepared.assignments) }, reviews: [], history: [], drafts: {}, ui: { view: 'prepare', scope: 'single', module: 'verification', codeId: prepared.codes.find(c => c.label === 'Authenticity')?.id || prepared.codes[0]?.id || '', secondCodeId: prepared.codes.find(c => c.label === 'Creative expression')?.id || prepared.codes[1]?.id || '', filters: {}, scroll: {} } };
 }
+// Step 2: the researcher has inspected the issues; the quotation-per-code table becomes the working data.
+export function prepareProject(project) {
+  assert(!project.preparation.issues.some(i => i.severity === 'error'), 'Resolve blocking errors before preparing data.');
+  project.preparation.prepared = true; project.preparation.preparedAt = new Date().toISOString(); project.updatedAt = project.preparation.preparedAt;
+  return project;
+}
+export const isPrepared = project => !!project && project.preparation.prepared !== false;
 export function draftKey(module, codeIds) { return `${module}:${codeIds.join('|')}`; }
 export function emptyDraft(project, module, codeIds) {
   const code = project.codes.find(c => c.id === codeIds[0]);
-  return { module, codeIds, assessment: '', subgroups: '', recommendation: '', core: code?.definition || '', boundary: code?.boundary || '', overlap: '', explanation: '', evidenceIds: [], classifications: {}, representatives: {}, note: '', rationale: '', action: 'keep', newLabel: '', newCore: '', newBoundary: '', targetCodeId: '', mergeNewLabel: '', splitLabels: ['',''], splitAssignments: {}, recodeMode: 'replace', finding: null, stage: 3 };
+  return { module, codeIds, assessment: '', subgroups: '', recommendation: '', core: code?.definition || '', boundary: code?.boundary || '', overlap: '', explanation: '', evidenceIds: [], classifications: {}, representatives: {}, note: '', rationale: '', action: 'keep', newLabel: '', newCore: '', newBoundary: '', targetCodeId: '', mergeNewLabel: '', splitLabels: ['',''], splitAssignments: {}, recodeMode: 'replace', quotationChanges: {}, finding: null, stage: 3 };
 }
 function assert(condition, message) { if (!condition) throw new Error(message); }
 function codeIn(project, codeId) { const c = project.codes.find(c => c.id === codeId && c.active); assert(c, 'The selected code is unavailable. Choose an active code.'); return c; }
@@ -37,19 +60,22 @@ function newCode(project, label, parentId = null) {
   const code = { id: id('c'), label, parentId, parentLabel: project.codes.find(c => c.id === parentId)?.label || '', definition: '', boundary: '', importedComment: '', groups: '', sourceRows: [], status: 'Reviewed', active: true };
   project.codes.push(code); return code;
 }
-function validateDraft(project, draft) {
+// Deferring postpones a decision, so it needs no reason; every decision that settles something does.
+function validateDraft(project, draft, resolution = 'approve') {
   assert(MODULES[draft.module], 'Choose a review module.');
   assert(draft.codeIds?.length === (draft.module === 'comparison' ? 2 : 1), 'Choose the required codes.');
   draft.codeIds.forEach(cid => codeIn(project, cid));
   assert(new Set(draft.codeIds).size === draft.codeIds.length, 'Choose two different codes to compare.');
   assert(project.reviewer.trim(), 'Enter a reviewer name before recording a decision.');
-  assert(draft.rationale.trim(), 'Add a rationale for this decision.');
+  assert(resolution === 'defer' || draft.rationale.trim(), 'Add a rationale for this decision.');
   const relevant = new Set(project.assignments.filter(a => draft.codeIds.includes(a.codeId)).map(a => a.quotationId));
   assert(draft.evidenceIds.every(qid => relevant.has(qid)), 'Some selected evidence no longer belongs to these codes. Refresh the review.');
 }
 export function previewDecision(project, draft, resolution = 'approve') {
-  validateDraft(project, draft);
+  validateDraft(project, draft, resolution);
   assert(['approve', 'reject', 'defer', 'note'].includes(resolution), 'Choose a supported decision.');
+  const target = { approve: 'Approved', reject: 'Rejected', defer: 'Deferred' }[resolution];
+  assert(!target || !draft.reviewStatus || canTransition(draft.reviewStatus, target), `A suggestion that is ${normalStatus(draft.reviewStatus)} cannot become ${target}. Reopen it or run a new analysis.`);
   if (resolution === 'approve') {
     assert(draft.evidenceIds.length > 0 || !quotesFor(project, draft.codeIds[0]).length, 'Select at least one supporting quotation.');
     if (draft.module === 'coherence') assert(draft.assessment, 'Choose a coherence assessment.');
@@ -63,7 +89,25 @@ export function previewDecision(project, draft, resolution = 'approve') {
   const next = structuredClone(project), source = codeIn(next, draft.codeIds[0]);
   const affected = new Set(draft.codeIds), action = resolution === 'approve' ? draft.action : resolution;
   if (resolution === 'approve') {
-    assert(['keep','rename','definition','subcode','split','merge','recode'].includes(action), 'Choose a supported change.');
+    assert(Object.hasOwn(ACTIONS, action), 'Choose a supported change.');
+    // Quotation-level changes come first so that code-level actions (merge, split) carry their result along.
+    const changes = Object.entries(draft.quotationChanges || {}).filter(([, change]) => change?.include);
+    const created = new Map();
+    for (const [qid, change] of changes) {
+      const assignment = next.assignments.find(a => a.quotationId === qid && a.codeId === source.id);
+      assert(assignment, 'A quotation change refers to a quotation that no longer belongs to this code.');
+      if (change.op === 'flag') assignment.flag = 'borderline';
+      else if (change.op === 'remove') next.assignments = next.assignments.filter(a => a !== assignment);
+      else if (change.op === 'recode') {
+        const recodeTarget = codeIn(next, change.targetCodeId); assert(recodeTarget.id !== source.id, 'Choose a different target code.');
+        assignment.codeId = recodeTarget.id; delete assignment.flag; affected.add(recodeTarget.id);
+      } else if (change.op === 'newcode') {
+        // Quotations given the same new name share one new code.
+        const label = String(change.label || '').trim(); assert(label, 'Enter a name for the new code.');
+        if (!created.has(label)) created.set(label, newCode(next, label));
+        assignment.codeId = created.get(label).id; delete assignment.flag; affected.add(created.get(label).id);
+      } else assert(false, 'Choose a supported quotation change.');
+    }
     switch (action) {
       case 'rename': {
         const label = draft.newLabel.trim(); assert(label, 'Enter the revised code name.');
@@ -113,7 +157,17 @@ export function previewDecision(project, draft, resolution = 'approve') {
         next.assignments.forEach(a => { if (sources.includes(a.codeId)) a.codeId = survivor.id; });
         break;
       }
+      case 'retire': {
+        source.active = false; source.retired = true;
+        next.assignments = next.assignments.filter(a => a.codeId !== source.id);
+        for (const c of next.codes) if (c.parentId === source.id) { c.parentId = source.parentId || null; affected.add(c.id); }
+        break;
+      }
+      case 'borderline':
+        assert(changes.some(([, change]) => change.op === 'flag'), 'Select at least one quotation to flag as borderline.');
+        break;
       case 'recode': {
+        if (changes.some(([, change]) => ['recode','newcode'].includes(change.op))) break;
         assert(draft.evidenceIds.length, 'Select the quotations to recode.');
         assert(['replace', 'add', 'remove'].includes(draft.recodeMode), 'Choose add, replace, or remove.');
         const target = draft.recodeMode === 'remove' ? null : codeIn(next, draft.targetCodeId);
@@ -127,7 +181,7 @@ export function previewDecision(project, draft, resolution = 'approve') {
         break;
       }
     }
-    if (action !== 'keep') for (const c of next.codes) if (affected.has(c.id)) c.status = 'Reviewed';
+    if (action !== 'keep') for (const c of next.codes) if (affected.has(c.id)) c.status = c.retired ? 'Retired' : 'Reviewed';
     const dedup = new Set(); next.assignments = next.assignments.filter(a => { const key = `${a.quotationId}|${a.codeId}`; if (dedup.has(key)) return false; dedup.add(key); return true; });
     for (const c of next.codes) c.parentLabel = next.codes.find(p => p.id === c.parentId)?.label || '';
   }
@@ -137,20 +191,38 @@ export function previewDecision(project, draft, resolution = 'approve') {
   const afterPairs = new Set(next.assignments.map(a => `${a.quotationId}|${a.codeId}`));
   const removed = project.assignments.filter(a => !afterPairs.has(`${a.quotationId}|${a.codeId}`));
   const added = next.assignments.filter(a => !beforePairs.has(`${a.quotationId}|${a.codeId}`));
-  return { projectId: project.id, revision: project.revision, action, resolution, codeChanges, removed, added, codes: next.codes, assignments: next.assignments, draft: structuredClone(draft), affectedCodeIds: [...affected] };
+  const beforeFlags = new Set(project.assignments.filter(a => a.flag).map(a => `${a.quotationId}|${a.codeId}`));
+  const flagged = next.assignments.filter(a => a.flag && !beforeFlags.has(`${a.quotationId}|${a.codeId}`) && beforePairs.has(`${a.quotationId}|${a.codeId}`)).map(a => ({ quotationId: a.quotationId, codeId: a.codeId, flag: a.flag }));
+  return { projectId: project.id, revision: project.revision, action, resolution, codeChanges, removed, added, flagged, codes: next.codes, assignments: next.assignments, draft: structuredClone(draft), affectedCodeIds: [...affected] };
 }
 export function commitDecision(project, preview) {
   assert(preview.projectId === project.id && preview.revision === project.revision, 'The project changed after this preview. Review the impact again.');
   const now = new Date().toISOString(), reviewId = id('review');
-  const hasChanges = preview.codeChanges.length || preview.added.length || preview.removed.length;
-  const status = preview.resolution === 'approve' ? (hasChanges ? 'Implemented' : 'Approved') : ({ reject: 'Rejected', defer: 'Deferred', note: 'Note' }[preview.resolution]);
+  const flagged = preview.flagged || [];
+  const hasChanges = preview.codeChanges.length || preview.added.length || preview.removed.length || flagged.length;
+  const status = { approve: 'Approved', reject: 'Rejected', defer: 'Deferred', note: 'Note' }[preview.resolution];
+  const implementationStatus = preview.resolution === 'approve' && hasChanges ? 'Applied' : 'Not applicable';
   project.codes = structuredClone(preview.codes); project.assignments = structuredClone(preview.assignments);
-  project.reviews.push({ id: reviewId, ...structuredClone(preview.draft), status, reviewStatus: preview.resolution === 'approve' ? 'Approved' : status, implementationStatus: hasChanges ? 'Implemented' : 'Not applicable', action: preview.action, reviewer: project.reviewer, recordedAt: now });
-  project.history.push({ id: id('action'), projectId: project.id, reviewId, action: preview.action, status, reviewer: project.reviewer, timestamp: now, rationale: preview.draft.rationale, evidenceIds: [...preview.draft.evidenceIds], affectedCodeIds: preview.affectedCodeIds, codeChanges: structuredClone(preview.codeChanges), removed: structuredClone(preview.removed), added: structuredClone(preview.added) });
+  project.reviews.push({ id: reviewId, ...structuredClone(preview.draft), status, reviewStatus: status, implementationStatus, action: preview.action, reviewer: project.reviewer, recordedAt: now, ...(implementationStatus === 'Applied' ? { appliedAt: now } : {}) });
+  project.history.push({ id: id('action'), projectId: project.id, reviewId, action: preview.action, status, implementationStatus, reviewer: project.reviewer, timestamp: now, rationale: preview.draft.rationale, evidenceIds: [...preview.draft.evidenceIds], affectedCodeIds: preview.affectedCodeIds, codeChanges: structuredClone(preview.codeChanges), removed: structuredClone(preview.removed), added: structuredClone(preview.added), flagged: structuredClone(flagged) });
   project.revision++; project.updatedAt = now;
   const key = draftKey(preview.draft.module, preview.draft.codeIds);
-  project.drafts[key] = { ...structuredClone(preview.draft), stage: 7, reviewStatus: preview.resolution === 'approve' ? 'Approved' : status, implementationStatus: hasChanges ? 'Implemented' : 'Not applicable', lastReviewId: reviewId };
+  project.drafts[key] = { ...structuredClone(preview.draft), stage: 7, reviewStatus: status === 'Note' ? preview.draft.reviewStatus || 'Under review' : status, implementationStatus, lastReviewId: reviewId, resolvedAt: now };
   return project.history.at(-1);
+}
+// Deferred -> Under review. The original evidence, finding and rationale come back with it.
+export function reopenSuggestion(project, key) {
+  const d = project.drafts[key]; assert(d, 'This suggestion is no longer available.');
+  assert(normalStatus(d.reviewStatus) === 'Deferred', 'Only deferred suggestions can be reopened.');
+  d.codeIds.forEach(cid => codeIn(project, cid));
+  const now = new Date().toISOString();
+  d.reviewStatus = 'Under review'; d.stage = 5;
+  project.history.push({ id: id('action'), projectId: project.id, reviewId: d.lastReviewId, action: 'reopen', status: 'Under review', reviewer: project.reviewer, timestamp: now, rationale: 'Deferred suggestion reopened for review.', evidenceIds: [...d.evidenceIds], affectedCodeIds: [...d.codeIds], codeChanges: [], removed: [], added: [] });
+  project.updatedAt = now;
+  return d;
+}
+export function deferredSuggestions(project) {
+  return Object.entries(project?.drafts || {}).filter(([, d]) => normalStatus(d.reviewStatus) === 'Deferred').map(([key, d]) => ({ key, ...d }));
 }
 export function saveReview(project, draft) {
   validateDraft(project, draft);
@@ -162,6 +234,28 @@ export function saveReview(project, draft) {
   project.drafts[draftKey(draft.module,draft.codeIds)] = { ...structuredClone(draft), lastReviewId:reviewId, reviewStatus:'Under review', stage:5 };
   project.updatedAt = now;
   return review;
+}
+// A single quotation moved to another code is applied as soon as the researcher saves it. It is recorded as its own
+// approved decision with the previous assignment kept, and leaves the code's open suggestion as it is.
+export function moveQuotation(project, draft, quotationId, { choice, targetCodeId = '', newLabel = '' }) {
+  assert(project.reviewer.trim(), 'Enter a reviewer name before recording a decision.');
+  assert(['existing','new'].includes(choice), 'Choose another code for this quotation.');
+  const source = codeIn(project, draft.codeIds[0]);
+  const assignment = project.assignments.find(a => a.quotationId === quotationId && a.codeId === source.id);
+  assert(assignment, 'This quotation no longer belongs to this code.');
+  const beforeCodes = new Map(project.codes.map(c => [c.id, structuredClone(c)])), beforeAssignment = structuredClone(assignment);
+  const target = choice === 'existing' ? codeIn(project, targetCodeId) : newCode(project, newLabel);
+  assert(target.id !== source.id, 'Choose a different code.');
+  const alreadyThere = project.assignments.some(a => a.quotationId === quotationId && a.codeId === target.id);
+  if (alreadyThere) project.assignments = project.assignments.filter(a => a !== assignment);
+  else { assignment.codeId = target.id; delete assignment.flag; }
+  const now = new Date().toISOString(), reviewId = id('review'), change = choice === 'existing' ? { op:'recode', targetCodeId:target.id, include:true } : { op:'newcode', label:target.label, include:true };
+  const codeChanges = project.codes.filter(c => JSON.stringify(beforeCodes.get(c.id)) !== JSON.stringify(c)).map(c => ({ before:beforeCodes.get(c.id) || null, after:structuredClone(c) }));
+  const rationale = `Quotation moved from “${source.label}” to ${choice === 'new' ? 'the new code ' : ''}“${target.label}” during ${MODULES[draft.module].title}.`;
+  project.reviews.push({ ...structuredClone(draft), id:reviewId, action:'recode', evidenceIds:[quotationId], quotationChanges:{ [quotationId]:change }, rationale, status:'Approved', reviewStatus:'Approved', implementationStatus:'Applied', appliedAt:now, reviewer:project.reviewer, recordedAt:now, scope:'quotation' });
+  project.history.push({ id:id('action'), projectId:project.id, reviewId, action:'move', status:'Approved', implementationStatus:'Applied', reviewer:project.reviewer, timestamp:now, rationale, evidenceIds:[quotationId], affectedCodeIds:[source.id, target.id], codeChanges, removed:[beforeAssignment], added:alreadyThere ? [] : [{ quotationId, codeId:target.id }] });
+  project.revision++; project.updatedAt = now;
+  return { target, alreadyThere };
 }
 export function validateBackup(value) {
   const object = x => x && typeof x === 'object' && !Array.isArray(x);
@@ -181,7 +275,7 @@ export function validateBackup(value) {
   assert(qs.size === value.quotations.length && cs.size === value.codes.length, 'The backup contains duplicate internal IDs.');
   value.quotations.forEach(q => assert(strings(q,['id','text','quotationId','source','coder','created','note']) && Number.isInteger(q.sourceRow), 'Invalid quotation in backup.'));
   value.codes.forEach(c => { assert(strings(c,['id','label','definition','boundary','importedComment','groups','status']) && Array.isArray(c.sourceRows) && typeof c.active === 'boolean' && (!c.parentId || cs.has(c.parentId)), 'Invalid code or parent in backup.'); const seen = new Set([c.id]); let parent = c.parentId; while (parent) { assert(!seen.has(parent), 'The backup has a hierarchy cycle.'); seen.add(parent); parent = value.codes.find(p => p.id === parent)?.parentId; } });
-  value.assignments.forEach(a => assert(qs.has(a.quotationId) && value.codes.some(c => c.id === a.codeId && c.active), 'The backup contains a broken coding assignment.'));
+  value.assignments.forEach(a => assert(qs.has(a.quotationId) && value.codes.some(c => c.id === a.codeId && c.active) && (a.flag === undefined || a.flag === 'borderline'), 'The backup contains a broken coding assignment.'));
   function validFinding(f) {
     return object(f) && strings(f,['title','interpretation','provenance']) && object(f.suggestedFields)
       && Array.isArray(f.evidenceIds) && f.evidenceIds.every(qid => qs.has(qid))
@@ -193,7 +287,7 @@ export function validateBackup(value) {
     assert(!d.analysisHistory || Array.isArray(d.analysisHistory) && d.analysisHistory.every(validFinding), 'The backup contains invalid analysis history.');
   }
   function validDraft(draft) {
-    return object(draft) && MODULES[draft.module] && strings(draft,['assessment','subgroups','recommendation','core','boundary','explanation','note','rationale','action','newLabel','newCore','newBoundary','targetCodeId','mergeNewLabel','recodeMode']) && Array.isArray(draft.codeIds) && draft.codeIds.every(cid => cid === '' || cs.has(cid)) && Array.isArray(draft.evidenceIds) && draft.evidenceIds.every(qid => qs.has(qid)) && object(draft.classifications) && Object.values(draft.classifications).every(object) && object(draft.representatives) && object(draft.splitAssignments) && Array.isArray(draft.splitLabels) && draft.splitLabels.length === 2 && draft.splitLabels.every(s => typeof s === 'string') && (!draft.finding || (strings(draft.finding,['title','interpretation','provenance']) && object(draft.finding.suggestedFields) && Array.isArray(draft.finding.evidenceIds) && draft.finding.evidenceIds.every(qid => qs.has(qid))));
+    return object(draft) && MODULES[draft.module] && strings(draft,['assessment','subgroups','recommendation','core','boundary','explanation','note','rationale','action','newLabel','newCore','newBoundary','targetCodeId','mergeNewLabel','recodeMode']) && Array.isArray(draft.codeIds) && draft.codeIds.every(cid => cid === '' || cs.has(cid)) && Array.isArray(draft.evidenceIds) && draft.evidenceIds.every(qid => qs.has(qid)) && object(draft.classifications) && Object.values(draft.classifications).every(object) && object(draft.representatives) && object(draft.splitAssignments) && (draft.quotationChanges === undefined || object(draft.quotationChanges) && Object.entries(draft.quotationChanges).every(([qid, c]) => qs.has(qid) && object(c) && ['flag','remove','recode','newcode'].includes(c.op))) && Array.isArray(draft.splitLabels) && draft.splitLabels.length === 2 && draft.splitLabels.every(s => typeof s === 'string') && (!draft.finding || (strings(draft.finding,['title','interpretation','provenance']) && object(draft.finding.suggestedFields) && Array.isArray(draft.finding.evidenceIds) && draft.finding.evidenceIds.every(qid => qs.has(qid))));
   }
   for (const draft of Object.values(value.drafts)) assert(validDraft(draft), 'The backup contains an invalid review draft.');
   for (const review of value.reviews) assert(validDraft(review) && strings(review,['id','status','reviewer','recordedAt']), 'The backup contains an invalid recorded review.');

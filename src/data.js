@@ -80,7 +80,7 @@ export async function readExport(bytes, name, kind) {
 export function prepareImports(imports, options = {}) {
   const { quotation, codes } = imports;
   const issues = [];
-  const issue = (severity, type, file, row, message, action, extra = {}) => issues.push({ id: `issue-${issues.length + 1}`, severity, type, file, row, message, action, status: 'Open', ...extra });
+  const issue = (severity, type, file, row, message, action, extra = {}) => issues.push({ id: `issue-${issues.length + 1}`, severity, type, file, row, message, action, status: 'Open', where: row ? `Row ${row}` : '', ...extra });
   for (const [kind, file] of Object.entries({ quotation, codes })) {
     if (!file) { issue('error', 'Missing file', kind, null, `Add the ${kind === 'codes' ? 'Code' : 'Quotation'} Manager export.`, 'Upload the required export.'); continue; }
     for (const field of requiredFields[kind]) if (!(file.mapping[field] >= 0) || file.mapping[field] >= file.headers.length) issue('error', 'Missing column', file.name, 1, `Map the required ${field} column.`, 'Choose a column in the mapping controls.');
@@ -124,19 +124,19 @@ export function prepareImports(imports, options = {}) {
     const rawId = value(quotation, row, 'id'), text = value(quotation, row, 'text');
     if (!rawId.trim()) issue('error', 'Missing quotation ID', quotation.name, index + 2, 'A quotation has no identifier.', 'Correct this row in the source export and import it again.');
     if (!text.trim()) issue('error', 'Missing quotation text', quotation.name, index + 2, `Quotation ${rawId || index + 2} has no text.`, 'Correct the source export and import it again.');
-    if (ids.has(rawId)) issue('warning', 'Duplicate quotation ID', quotation.name, index + 2, `${rawId} also occurs on row ${ids.get(rawId)}. Records remain separate.`, 'Inspect both source rows; internal row IDs keep them distinct.');
+    if (ids.has(rawId)) issue('warning', 'Duplicate quotation ID', quotation.name, index + 2, `${rawId} also occurs on row ${ids.get(rawId)}. Records remain separate.`, 'Inspect both source rows; internal row IDs keep them distinct.', { where: rawId });
     ids.set(rawId, index + 2);
     const q = { id: `q${index + 2}`, quotationId: rawId, text, source: value(quotation, row, 'source'), coder: value(quotation, row, 'coder'), created: value(quotation, row, 'created'), note: value(quotation, row, 'note'), sourceRow: index + 2 };
     quotations.push(q);
     const names = splitCodes(value(quotation, row, 'codes'));
-    if (!names.length) issue('warning', 'Uncoded quotation', quotation.name, index + 2, `${rawId} has no codes. It will remain available in the quotation browser.`, 'Review later or add a coding assignment.');
+    if (!names.length) issue('warning', 'Blank Codes field', quotation.name, index + 2, `${rawId} has no codes.`, 'Keep the quotations for later review; no code row is created.', { where: rawId });
     for (const name of names) {
       if (!codeMap.has(name)) {
         codeMap.set(name, { id: `c${codeMap.size + 1}`, label: name, parentLabel: '', definition: '', boundary: '', importedComment: '', groups: '', sourceRows: [], status: 'Unreviewed', active: true });
-        issue('warning', 'Code absent from manager', quotation.name, index + 2, `${name} occurs in quotations but not in the Code Manager.`, 'Retain it as a working code with quotation provenance.');
+        issue('warning', 'Code absent from Code Manager', quotation.name, index + 2, `${name} occurs in quotations but not in the Code Manager.`, 'Confirm the label, or add the code to the Code Manager export.', { where: `Code “${name}”` });
       }
       const c = codeMap.get(name), key = `${q.id}|${c.id}`;
-      if (pairs.has(key)) { issue('warning', 'Duplicate assignment', quotation.name, index + 2, `${rawId} lists ${name} more than once.`, 'The prepared table contains this assignment once; the original row is preserved.'); continue; }
+      if (pairs.has(key)) { issue('warning', 'Duplicate quotation–code pair', quotation.name, index + 2, `${rawId} lists ${name} more than once.`, 'Flagged, not merged. Check whether the code was assigned twice.', { where: rawId }); continue; }
       pairs.add(key); assignments.push({ quotationId: q.id, codeId: c.id });
     }
   }
@@ -144,9 +144,17 @@ export function prepareImports(imports, options = {}) {
   if (!codeMap.size) issue('error', 'Empty codebook', codes.name, null, 'The exports have no code records.', 'Import a file containing codes.');
   const used = new Set(assignments.map(a => a.codeId));
   const unused = [...codeMap.values()].filter(c => !used.has(c.id));
-  if (unused.length) issue('warning', 'Unused codes', codes.name, null, `${unused.length} codes have no quotations in this export.`, 'Retain them in the codebook; filter to “No quotations” to inspect.');
+  unused.forEach(c => issue('warning', 'Code unused', codes.name, c.sourceRows.join(', ') || null, `${c.label} has no quotations in this export.`, 'No quotations assigned. Nothing to review; the code stays in the codebook.', { where: `Code “${c.label}”` }));
+  // Groundedness is ATLAS.ti's own assignment count, so a mismatch means the two exports are out of step.
+  if (codes.mapping.groundedness >= 0) {
+    const counts = new Map(); assignments.forEach(a => counts.set(a.codeId, (counts.get(a.codeId) || 0) + 1));
+    for (const [index, row] of codes.rows.entries()) {
+      const label = cleanCode(row[labelCol]), grounded = row[codes.mapping.groundedness], c = codeMap.get(label);
+      if (c && c.sourceRows.length === 1 && grounded !== '' && Number.isFinite(Number(grounded)) && Number(grounded) !== (counts.get(c.id) || 0)) issue('warning', 'Groundedness differs', codes.name, index + 2, `${label}: Code Manager reports ${Number(grounded)} quotations, the Quotation Manager has ${counts.get(c.id) || 0}.`, 'Check that both exports come from the same ATLAS.ti project state.', { where: `Code “${label}”` });
+    }
+  }
   const missingMetadata = quotations.filter(q => !q.source || !q.coder || !q.created).length;
-  if (missingMetadata) issue('warning', 'Optional metadata missing', quotation.name, null, `${missingMetadata} quotations lack source, creator, or date metadata.`, 'Continue with the available evidence.');
+  if (missingMetadata) issue('warning', 'Missing metadata', quotation.name, null, `${missingMetadata} quotations lack source, creator, or date metadata.`, 'Continue with the available evidence.', { where: `${missingMetadata} quotations` });
   const allCodes = [...codeMap.values()].map(c => ({ ...c, parentId: codeMap.get(c.parentLabel)?.id || null }));
   const assignmentCounts = new Map(); assignments.forEach(a => assignmentCounts.set(a.quotationId, (assignmentCounts.get(a.quotationId) || 0) + 1));
   return { quotations, codes: allCodes, assignments, issues, delimiter, childColumn: childCol,
@@ -156,4 +164,37 @@ export function prepareImports(imports, options = {}) {
 export function csv(columns, rows) {
   const encode = x => { let s = String(x ?? ''); if (/^[=+@\-\t\r]/.test(s)) s = "'" + s; return '"' + s.replaceAll('"', '""') + '"'; };
   return '\uFEFF' + [columns, ...rows].map(row => row.map(encode).join(',')).join('\r\n');
+}
+
+// What each issue means for the analysis, in the researcher's terms. Blocking errors stop the import;
+// warnings let it continue, and their consequence is stated so the researcher can decide.
+export const ISSUE_HELP = {
+  'Missing file': 'Althea needs both exports: quotations carry the coded text, and the Code Manager supplies the codebook.',
+  'Missing column': 'A column Althea relies on could not be found. Without it, quotations or codes cannot be read correctly.',
+  'Conflicting mapping': 'The same column is used for two different fields, so one of them would be read wrongly.',
+  'Missing parent': 'A child code appears before any parent code, so its place in the hierarchy is unknown.',
+  'Missing quotation ID': 'Without an ID, decisions about this quotation cannot be traced back to ATLAS.ti.',
+  'Missing quotation text': 'A quotation without text cannot be read or used as evidence.',
+  'Empty quotations': 'The export contains no quotations, so there is nothing to review.',
+  'Empty codebook': 'Neither export contains any codes, so there is nothing to review.',
+  'Blank Codes field': 'These quotations were exported without any code. They stay in the project but do not appear in any code’s evidence, so no review function will look at them.',
+  'Check code delimiter': 'Commas and semicolons both appear in the Codes column. If the wrong one is used, code names can be split in the wrong place.',
+  'Code absent from Code Manager': 'A code is used in the quotations but missing from the codebook export. It may be a typo, a renamed code, or an export taken at a different time.',
+  'Code unused': 'The code is in the codebook but no quotation uses it, so there is no evidence to review. It may be new, or obsolete.',
+  'Duplicate code name': 'The same code name appears on several Code Manager rows. Althea cannot tell which row each quotation refers to, so they are treated as one code.',
+  'Duplicate quotation ID': 'Two rows share a quotation ID. Both are kept as separate quotations, but references by ID may be ambiguous.',
+  'Duplicate quotation–code pair': 'The same code is listed twice on one quotation. Althea counts it once, so code counts may differ slightly from the raw export.',
+  'Groundedness differs': 'ATLAS.ti’s own count of quotations for this code does not match the quotation export. The two files may come from different moments in the project.',
+  'Missing code label': 'A Code Manager row has no name, so it cannot be matched to any quotation.',
+  'Missing metadata': 'Source, coder or date is missing for some quotations. The text can still be reviewed, but less context is shown alongside it.',
+};
+// Issues of one type in one file are reviewed together, as the researcher sees them.
+export function groupIssues(issues) {
+  const groups = new Map();
+  for (const i of issues) {
+    const key = `${i.type}|${i.file}`;
+    if (!groups.has(key)) groups.set(key, { key, type: i.type, file: i.file, severity: i.severity, action: i.action, where: [], messages: [], count: 0 });
+    const g = groups.get(key); g.count++; if (i.where) g.where.push(i.where); g.messages.push(i.message);
+  }
+  return [...groups.values()].sort((a, b) => (a.severity === 'error' ? 0 : 1) - (b.severity === 'error' ? 0 : 1));
 }
