@@ -1,10 +1,10 @@
 /** Server-side Pi adapter. Runs one isolated pi agent session per analysis and returns a finding in the
  * same shape as the simulated providers. The agent sees a read-only slice of the project through tools and
  * reports through a single structured `submit_finding` tool; it can never change the project.
- * Requires the pi SDK: a project install of `@earendil-works/pi-coding-agent`, ALTHEA_PI_SDK, or the pi on PATH.
+ * Requires the pi SDK: a project install of `@earendil-works/pi-coding-agent`, ALTHEA_PI_SDK, or pi on PATH.
  */
 import { createRequire } from 'node:module';
-import { existsSync, realpathSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { evaluationQuestions } from '../src/verification.js';
@@ -24,7 +24,19 @@ Rules:
 - Finish by calling submit_finding exactly once. Do not write a final answer outside that tool.`;
 
 const PACKAGE = '@earendil-works/pi-coding-agent';
-// Prefer an explicit path, then a project install, then the global install that provides `pi` on PATH.
+function managedSdkManifest(executable) {
+  try {
+    const binDir = path.dirname(realpathSync(executable));
+    if (path.basename(binDir) !== 'bin') return;
+    const agentDir = path.dirname(binDir);
+    const version = readFileSync(path.join(agentDir, 'install', 'current-version'), 'utf8').trim();
+    if (!/^[\w.+-]+$/.test(version)) return;
+    const manifest = path.join(agentDir, 'install', 'releases', version, 'node_modules', PACKAGE, 'package.json');
+    return existsSync(manifest) ? realpathSync(manifest) : undefined;
+  } catch {}
+}
+
+// Prefer an explicit path, then a project install, then a PATH install (npm or managed Pi).
 function sdkManifest() {
   if (process.env.ALTHEA_PI_SDK) return path.join(process.env.ALTHEA_PI_SDK, 'package.json');
   try { return createRequire(import.meta.url).resolve(`${PACKAGE}/package.json`); } catch {}
@@ -33,6 +45,11 @@ function sdkManifest() {
     for (const root of [path.join(dir, 'node_modules'), path.join(dir, '..', 'lib', 'node_modules')]) {
       const manifest = path.join(root, PACKAGE, 'package.json');
       if (existsSync(manifest)) return realpathSync(manifest);
+    }
+    const executable = path.join(dir, process.platform === 'win32' ? 'pi.cmd' : 'pi');
+    if (existsSync(executable)) {
+      const manifest = managedSdkManifest(executable);
+      if (manifest) return manifest;
     }
   }
   throw new Error('The pi SDK was not found. Install pi, or set ALTHEA_PI_SDK.');

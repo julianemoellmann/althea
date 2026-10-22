@@ -25,7 +25,9 @@ pi          # then /login, once
 npm start
 ```
 
-The server finds the pi SDK in this order: `ALTHEA_PI_SDK`, a project install of `@earendil-works/pi-coding-agent`, then the global install that puts `pi` on PATH. If none is found, or pi has no working login, `/api/pi/status` reports Pi as unavailable and the app uses the simulation.
+The server finds the pi SDK in this order: `ALTHEA_PI_SDK`, a project install of `@earendil-works/pi-coding-agent`, then an install on `PATH`. The last option supports both npm global installs and Pi's managed install under `~/.pi/agent`. If none is found, or pi has no working login, `/api/pi/status` reports Pi as unavailable and the app uses the simulation.
+
+For a nonstandard install, set `ALTHEA_PI_SDK` to the SDK package directory (the directory containing `package.json`), then restart Althea. For example, a managed install can be addressed as `$HOME/.pi/agent/install/releases/<version>/node_modules/@earendil-works/pi-coding-agent`.
 
 Optional: `ALTHEA_PI_MODEL=openai/gpt-5.1:medium` (pi's `provider/model[:thinking]` syntax) overrides pi's default model.
 

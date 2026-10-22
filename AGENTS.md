@@ -23,7 +23,7 @@ npm test         # node --test, ~36 tests over the real example exports
 pi               # then /login once (e.g. ChatGPT via openai-codex), /model to pick a default
 ```
 
-The server finds the pi SDK in this order: `ALTHEA_PI_SDK` (path to `@earendil-works/pi-coding-agent`), a project install, then the global install that puts `pi` on PATH. `ALTHEA_PI_MODEL=provider/model[:thinking]` overrides pi's default model. Check with `curl http://127.0.0.1:4173/api/pi/status`. Without the UI: `node scripts/try-pi.mjs [verification|coherence|definition] [code label]`.
+The server finds the pi SDK in this order: `ALTHEA_PI_SDK` (path to `@earendil-works/pi-coding-agent`), a project install, then the install behind `pi` on `PATH` (npm global or Pi's managed `~/.pi/agent` install). `ALTHEA_PI_MODEL=provider/model[:thinking]` overrides pi's default model. Check with `curl http://127.0.0.1:4173/api/pi/status`. Without the UI: `node scripts/try-pi.mjs [verification|coherence|definition] [code label]`.
 
 **Restart the server after changing `server.mjs` or `agent/`.** Browser files are served with `no-cache`, so a stale server process still serves new page code against an old API. If Settings says "this Althea server has no Pi support", that is what happened.
 
