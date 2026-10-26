@@ -35,7 +35,7 @@ The user does not need to complete every functionality in a fixed order. The cor
 
 ## 1. Structure of the Data Input
 
-The training data resembles two exported spreadsheets from an ATLAS.ti project.
+The example data resembles two exported spreadsheets from an ATLAS.ti project.
 
 ### 1.1 Data - Quotation Manager
 
@@ -83,21 +83,21 @@ Produce a normalized, reviewable table where each row is a single (code, quotati
 
 #### 2.1.2 Inputs
 Spreadsheets (from ATLAS.ti exports). 
-- **“Training data - Quotation Manager”** with at least: Number/id, Text content/text, Codes (all assigned codes in one cell).
-- **“Training data - Code Manager”**(Optional) with Code, Groundedness, Density, Groups, Definition fields.
+- **“Example data - Quotation Manager”** with at least: Number/id, Text content/text, Codes (all assigned codes in one cell).
+- **“Example data - Code Manager”**(Optional) with Code, Groundedness, Density, Groups, Definition fields.
 
 #### 2.1.3 Desired output
 One CSV: quotation_per_code.csv — one row per code–quotation pair with these columns:
-- quotation_id: **“Training data - Quotation Manager”** - **Number:** (or **Reference:** if used as the stable quotation identifier)
-- text: **“Training data - Quotation Manager”** - **Text content:** (quotation exactly as exported; raw variant)
-- code: **“Training data - Quotation Manager”** **Codes** synchronized with **“Training data - Code Manager”** **Code** (code exactly as exported; raw variant)
-- source: **“Training data - Quotation Manager”** **Source** of quotation
-- coder: **“Training data - Quotation Manager”** **Creator**
-- created: **“Training data - Quotation Manager”** **Creation Date**
-- note: **“Training data - Quotation Manager”** **Comment** and **“Training data - Code Manager”** **Comment** (raw variant)
+- quotation_id: **“Example data - Quotation Manager”** - **Number:** (or **Reference:** if used as the stable quotation identifier)
+- text: **“Example data - Quotation Manager”** - **Text content:** (quotation exactly as exported; raw variant)
+- code: **“Example data - Quotation Manager”** **Codes** synchronized with **“Example data - Code Manager”** **Code** (code exactly as exported; raw variant)
+- source: **“Example data - Quotation Manager”** **Source** of quotation
+- coder: **“Example data - Quotation Manager”** **Creator**
+- created: **“Example data - Quotation Manager”** **Creation Date**
+- note: **“Example data - Quotation Manager”** **Comment** and **“Example data - Code Manager”** **Comment** (raw variant)
 
 #### 2.1.4 Step‑by‑step procedure
-1. Check whether the required spreadsheets are available: **“Training data - Quotation Manager”** and, if needed, **“Training data - Code Manager”**.
+1. Check whether the required spreadsheets are available: **“Example data - Quotation Manager”** and, if needed, **“Example data - Code Manager”**.
 2. Normalize the file format: ensure UTF‑8 encoding, correct CSV quoting, and identify the code delimiter used in the exported `Codes` field (` , ` or ` ; `). Document the chosen delimiter before processing.
 3. Split multi‑code cells: for each quotation row, separate the `Codes` field into individual code labels. Remove leading and trailing spaces, and ignore empty items.
 4. Create one row per (quotation, code): for each split code, create one row with `quotation_id`, `text`, `code`, `source`, `coder`, `created`, and `note`.

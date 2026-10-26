@@ -8,7 +8,7 @@ import { analyzeWithPi, piStatus } from '../agent/pi-analyst.mjs';
 
 const [module = 'verification', label = 'Skepticism'] = process.argv.slice(2);
 const load = async (file, kind) => readExport(new Uint8Array(await readFile(new URL(`../${file}`, import.meta.url))), file, kind);
-const imports = { quotation: await load('Training Data - Quotation Manager.xlsx', 'quotation'), codes: await load('Training Data - Code Manager.xlsx', 'codes') };
+const imports = { quotation: await load('Example Data - Quotation Manager.xlsx', 'quotation'), codes: await load('Example Data - Code Manager.xlsx', 'codes') };
 const project = createProject('Pi trial', imports, prepareImports(imports), 'Pi trial', true);
 const code = project.codes.find(c => c.label === label);
 if (!code) throw new Error(`No code "${label}". Codes: ${project.codes.map(c => c.label).join(', ')}`);

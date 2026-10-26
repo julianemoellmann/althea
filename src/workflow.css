@@ -214,3 +214,64 @@
 .btn.danger:hover:not(:disabled){background:var(--color-error-background)}
 .dialog-footer .btn.danger{background:var(--color-error-foreground);color:white;border-color:var(--color-error-foreground)}
 .project-row{display:flex;align-items:center;gap:8px}.project-row .project-card{flex:1;min-width:0}.project-row .btn.danger{flex:none}
+/* Brand: the light version of the mark on the dark sidebar, in the brand colours. */
+.brand{display:flex;align-items:center;justify-content:flex-start;gap:12px;padding:8px 6px;color:var(--color-brand-soft-white);text-decoration:none}
+.brand-logo{width:40px;height:40px;flex:none}
+.brand-logo .mark-bracket{fill:var(--mark-bracket,var(--ink))}.brand-logo .mark-box{fill:var(--mark-box,var(--color-brand-slate))}
+.sidebar .brand-logo,.navigation-dialog .brand-logo{--mark-bracket:var(--color-brand-soft-white);--mark-box:#8FA5B8}
+.brand-word{font:600 26px/1 var(--font-title);letter-spacing:.01em}
+@media(min-width:1024px) and (max-width:1279px){.sidebar .brand{justify-content:center;padding:4px 0}.sidebar .brand-word{display:none}}
+/* Project switcher: the name only, cut to fit. */
+.project-switch>span:nth-child(2){min-width:0;flex:1}
+.project-switch strong{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Asset icons are masks coloured by the text around them. */
+.asset-icon{display:inline-block;width:40px;height:40px;flex:none;background:currentColor;-webkit-mask:var(--icon) center/contain no-repeat;mask:var(--icon) center/contain no-repeat}
+.nav-item .asset-icon{width:22px;height:22px}
+.function-card .asset-icon{color:var(--ink)}
+/* Card headings in edge-to-edge table cards keep the card's inner spacing. */
+.table-card>.section-heading{padding:20px 21px 0;margin-bottom:0}
+/* The new-code field stays inside the quotation card. */
+fieldset.quote-decision .choice-picker{margin:0 0 6px 26px;width:calc(100% - 26px);max-width:calc(100% - 26px);box-sizing:border-box}
+/* Reasoning trace: reasoning in the interpretation colours, tool use as quiet evidence-like rows. */
+.trace{margin:12px 0;border:1px solid var(--color-interpretation-border);border-radius:8px;padding:10px 14px;background:var(--color-interpretation-background)}
+.trace>summary{font:600 13px var(--font-title);color:var(--color-interpretation-foreground);cursor:pointer}
+.trace-steps{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:8px;max-height:480px;overflow:auto}
+.trace-steps li{padding:8px 10px;border-radius:6px;background:white;border-left:3px solid var(--color-neutral-border)}
+.trace-steps li p{margin:4px 0 0;font-size:13px;white-space:pre-wrap}
+.trace-steps .trace-thinking{border-left-color:var(--color-interpretation-border)}
+.trace-steps .trace-tool{border-left-color:var(--color-evidence-border)}
+.trace-steps .trace-tool code{display:block;margin-top:4px;font:12px var(--font-mono);color:var(--muted);overflow-wrap:anywhere}
+.trace-steps .trace-result{background:transparent;padding:2px 10px}
+.trace-steps .trace-result summary{font:500 12px var(--font-title);color:var(--muted);cursor:pointer}
+.trace-steps .trace-result .full-text{font-size:12px;max-height:200px;overflow:auto}
+/* Export and orientation lists in dialogs. */
+.export-list{display:flex;flex-direction:column;gap:10px;margin-top:12px}
+.export-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;border:1px solid var(--line);border-radius:8px}
+.export-row>span{display:flex;flex-direction:column;gap:2px;min-width:0}.export-row .btn{flex:none}
+.orientation-example{display:flex;flex-direction:column;gap:6px;align-items:flex-start;margin:10px 0}
+.orientation-example .full-text{white-space:pre-wrap;margin:0}
+#settings-orientation{font-size:13px;line-height:1.5}
+.sidebar .nav-item>span.asset-icon{display:inline-block}
+/* Pi's justification reads as interpretation, like the finding it explains. */
+.justification{margin:12px 0;border:1px solid var(--color-interpretation-border);border-radius:8px;padding:10px 14px;background:white}
+.justification>summary{font:600 13px var(--font-title);color:var(--color-interpretation-foreground);cursor:pointer}
+.justification dl{margin:8px 0 0}
+/* System check rows: one status icon per check, with the fix under a failure. */
+.check-list{list-style:none;margin:14px 0 0;padding:0;display:flex;flex-direction:column;gap:8px}
+.check-list li{display:flex;gap:12px;align-items:flex-start;padding:10px 12px;border:1px solid var(--line);border-radius:8px}
+.check-list li>span:last-child{display:flex;flex-direction:column;gap:2px;min-width:0}
+.check-icon{flex:none;width:22px;height:22px;display:grid;place-items:center;border-radius:50%}
+.check-ok .check-icon{color:var(--color-success-foreground);background:var(--color-success-background)}
+.check-fail{border-color:var(--color-error-border)!important;background:var(--color-error-background)}
+.check-fail .check-icon{color:var(--color-error-foreground);background:white}
+.check-fix{color:var(--color-error-foreground)}
+.check-list .spinner.small{width:14px;height:14px}
+/* Project switcher: avatar, name and chevron on one centred line. */
+.project-switch{display:flex;align-items:center;gap:10px}
+.project-switch .project-avatar{display:grid;place-items:center;line-height:1;padding:0;font:600 14px/1 var(--font-title)}
+.switch-chevron{display:grid;place-items:center;flex:none;opacity:.8}
+.switch-chevron svg{width:16px;height:16px}
+.sidebar-bottom>p{font-size:10px;line-height:1.45}
+/* The menu dialog reuses the sidebar markup; keep its avatar, chevron and wordmark laid out as in the sidebar. */
+.navigation-dialog .project-switch .project-avatar,.navigation-dialog .project-switch .switch-chevron{display:grid}
+.navigation-dialog .brand>.brand-word{display:inline}

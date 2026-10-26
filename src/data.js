@@ -161,6 +161,12 @@ export function prepareImports(imports, options = {}) {
     summary: { quotations: quotations.length, codes: allCodes.length, codeRows: codes.rows.filter(r => r.some(Boolean)).length, sources: new Set(quotations.map(q => q.source).filter(Boolean)).size, assignments: assignments.length, multiCode: [...assignmentCounts.values()].filter(n => n > 1).length, duplicateGroups: duplicateGroups.length, unusedCodes: unused.length } };
 }
 
+// sheets: [[name, rows]], each row an array of plain values. Cells are written as values, never as formulas.
+export async function workbook(sheets) {
+  const XLSX = await import('../vendor/xlsx.mjs'), book = XLSX.utils.book_new();
+  for (const [name, rows] of sheets) XLSX.utils.book_append_sheet(book, XLSX.utils.aoa_to_sheet(rows), name);
+  return XLSX.write(book, { type: 'array', bookType: 'xlsx' });
+}
 export function csv(columns, rows) {
   const encode = x => { let s = String(x ?? ''); if (/^[=+@\-\t\r]/.test(s)) s = "'" + s; return '"' + s.replaceAll('"', '""') + '"'; };
   return '\uFEFF' + [columns, ...rows].map(row => row.map(encode).join(',')).join('\r\n');

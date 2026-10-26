@@ -60,19 +60,18 @@ function newCode(project, label, parentId = null) {
   const code = { id: id('c'), label, parentId, parentLabel: project.codes.find(c => c.id === parentId)?.label || '', definition: '', boundary: '', importedComment: '', groups: '', sourceRows: [], status: 'Reviewed', active: true };
   project.codes.push(code); return code;
 }
-// Deferring postpones a decision, so it needs no reason; every decision that settles something does.
-function validateDraft(project, draft, resolution = 'approve') {
+// A rationale is encouraged but optional: researchers record reasons where they add something.
+function validateDraft(project, draft) {
   assert(MODULES[draft.module], 'Choose a review module.');
   assert(draft.codeIds?.length === (draft.module === 'comparison' ? 2 : 1), 'Choose the required codes.');
   draft.codeIds.forEach(cid => codeIn(project, cid));
   assert(new Set(draft.codeIds).size === draft.codeIds.length, 'Choose two different codes to compare.');
   assert(project.reviewer.trim(), 'Enter a reviewer name before recording a decision.');
-  assert(resolution === 'defer' || draft.rationale.trim(), 'Add a rationale for this decision.');
   const relevant = new Set(project.assignments.filter(a => draft.codeIds.includes(a.codeId)).map(a => a.quotationId));
   assert(draft.evidenceIds.every(qid => relevant.has(qid)), 'Some selected evidence no longer belongs to these codes. Refresh the review.');
 }
 export function previewDecision(project, draft, resolution = 'approve') {
-  validateDraft(project, draft, resolution);
+  validateDraft(project, draft);
   assert(['approve', 'reject', 'defer', 'note'].includes(resolution), 'Choose a supported decision.');
   const target = { approve: 'Approved', reject: 'Rejected', defer: 'Deferred' }[resolution];
   assert(!target || !draft.reviewStatus || canTransition(draft.reviewStatus, target), `A suggestion that is ${normalStatus(draft.reviewStatus)} cannot become ${target}. Reopen it or run a new analysis.`);
@@ -256,6 +255,40 @@ export function moveQuotation(project, draft, quotationId, { choice, targetCodeI
   project.history.push({ id:id('action'), projectId:project.id, reviewId, action:'move', status:'Approved', implementationStatus:'Applied', reviewer:project.reviewer, timestamp:now, rationale, evidenceIds:[quotationId], affectedCodeIds:[source.id, target.id], codeChanges, removed:[beforeAssignment], added:alreadyThere ? [] : [{ quotationId, codeId:target.id }] });
   project.revision++; project.updatedAt = now;
   return { target, alreadyThere };
+}
+// Uncoding takes a quotation out of the working dataset, e.g. an interviewer's turn coded by accident: every
+// assignment is removed and the quotation is excluded from analysis. The quotation, its previous assignments and the
+// original exports stay in the project and history.
+export function uncodeQuotation(project, draft, quotationId) {
+  assert(project.reviewer.trim(), 'Enter a reviewer name before recording a decision.');
+  const q = project.quotations.find(x => x.id === quotationId); assert(q && !q.excluded, 'This quotation is no longer in the dataset.');
+  const removed = project.assignments.filter(a => a.quotationId === quotationId);
+  const now = new Date().toISOString(), reviewId = id('review'), codeIds = [...new Set(removed.map(a => a.codeId))];
+  const rationale = `Quotation ${q.quotationId} uncoded and removed from the working dataset during ${MODULES[draft.module].title}.`;
+  project.assignments = project.assignments.filter(a => a.quotationId !== quotationId);
+  q.excluded = true;
+  project.reviews.push({ ...structuredClone(draft), id:reviewId, action:'uncode', evidenceIds:[quotationId], quotationChanges:{ [quotationId]:{ op:'remove', include:true } }, rationale, status:'Approved', reviewStatus:'Approved', implementationStatus:'Applied', appliedAt:now, reviewer:project.reviewer, recordedAt:now, scope:'quotation' });
+  project.history.push({ id:id('action'), projectId:project.id, reviewId, action:'uncode', status:'Approved', implementationStatus:'Applied', reviewer:project.reviewer, timestamp:now, rationale, evidenceIds:[quotationId], affectedCodeIds:codeIds, codeChanges:[], removed:structuredClone(removed), added:[] });
+  project.revision++; project.updatedAt = now;
+  return { removed };
+}
+// The working dataset after review, laid out like the ATLAS.ti exports (codes joined with the imported delimiter).
+export function finalQuotationSheets(project) {
+  const delimiter = `${project.preparation.delimiter || ','} `, labels = new Map(project.codes.map(c => [c.id, c.label]));
+  const kept = project.quotations.filter(q => !q.excluded).map(q => {
+    const own = project.assignments.filter(a => a.quotationId === q.id);
+    return [q.quotationId, q.source, q.text, own.map(a => labels.get(a.codeId)).join(delimiter), own.length, own.filter(a => a.flag).map(a => labels.get(a.codeId)).join(delimiter), q.note, q.coder, q.created];
+  });
+  const removed = project.quotations.filter(q => q.excluded).map(q => [q.quotationId, q.source, q.text, q.note, q.coder, q.created]);
+  return [['Quotations', [['ID', 'Document', 'Quotation Content', 'Codes', 'Number of codes', 'Flagged borderline', 'Comment', 'Created by', 'Created'], ...kept]],
+    ['Removed from dataset', [['ID', 'Document', 'Quotation Content', 'Comment', 'Created by', 'Created'], ...removed]]];
+}
+export function finalCodebookSheets(project) {
+  const counts = countsByCode(project), sorted = [...project.codes].sort((a, b) => a.label.localeCompare(b.label));
+  const head = ['Code', 'Parent', 'Core concept', 'Boundary rule', 'Comment (imported)', 'Groundedness', 'Groups', 'Status'];
+  const row = c => [c.label, c.parentLabel, c.definition, c.boundary, c.importedComment, counts.get(c.id) || 0, c.groups, c.status];
+  return [['Codes', [head, ...sorted.filter(c => c.active).map(row)]],
+    ['Retired and merged', [[...head, 'Merged into'], ...sorted.filter(c => !c.active).map(c => [...row(c), project.codes.find(x => x.id === c.mergedInto)?.label || ''])]]];
 }
 export function validateBackup(value) {
   const object = x => x && typeof x === 'object' && !Array.isArray(x);

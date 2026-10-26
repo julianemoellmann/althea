@@ -1,9 +1,10 @@
-import { readExport, prepareImports, groupIssues, ISSUE_HELP, requiredFields, csv } from './data.js';
-import { MODULES, SCOPES, ACTIONS, STATUSES, id, countWords, activeCodes, countsByCode, quotesFor, createProject, prepareProject, isPrepared, draftKey, emptyDraft, previewDecision, commitDecision, saveReview, moveQuotation, reopenSuggestion, deferredSuggestions, normalStatus, statusLabel, validateBackup } from './model.js';
-import { allProjects, saveProject, deleteProject, deleteAllProjects } from './storage.js';
+import { readExport, prepareImports, groupIssues, ISSUE_HELP, requiredFields, csv, workbook } from './data.js';
+import { MODULES, SCOPES, ACTIONS, STATUSES, id, countWords, activeCodes, countsByCode, quotesFor, createProject, prepareProject, isPrepared, draftKey, emptyDraft, previewDecision, commitDecision, saveReview, moveQuotation, uncodeQuotation, reopenSuggestion, deferredSuggestions, normalStatus, statusLabel, validateBackup, finalQuotationSheets, finalCodebookSheets } from './model.js';
+import { allProjects, saveProject, deleteProject, deleteAllProjects, storageWorks } from './storage.js';
 import { exampleProvider } from './analysis.js';
 import { simulationProviders } from './verification.js';
 import { piProvider, piAvailable, piSettings, savePiSettings } from './pi-provider.js';
+import { ORIENTATIONS, ORIENTATION_HELP } from './orientations.js';
 
 const app = document.querySelector('#app'), modal = document.querySelector('#modal');
 const e = value => String(value ?? '').replace(/[&<>"']/g, ch => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch]));
@@ -17,13 +18,17 @@ const paths = {
   history:'M4 8a9 9 0 1 1-1 8M3 3v6h6M12 7v6l4 2', arrow:'M5 12h14M13 6l6 6-6 6', back:'M19 12H5M11 6l-6 6 6 6',
   plus:'M12 5v14M5 12h14', check:'m5 12 4 4L19 6', download:'M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5',
   upload:'M12 16V4m-5 5 5-5 5 5M4 16v5h16v-5', search:'M10 3a7 7 0 1 0 0 14 7 7 0 0 0 0-14m5 12 6 6',
-  folder:'M3 6V4h7l2 3h9v13H3z', close:'m6 6 12 12M6 18 18 6', settings:'M4 7h16M4 17h16M8 4v6M16 14v6',
+  folder:'M3 6V4h7l2 3h9v13H3z', chevron:'m6 9 6 6 6-6', close:'m6 6 12 12M6 18 18 6', settings:'M4 7h16M4 17h16M8 4v6M16 14v6',
   link:'M10 14 14 10M8 16l-2 2a3 3 0 0 1-4-4l5-5a3 3 0 0 1 4 0m2 6a3 3 0 0 0 4 0l5-5a3 3 0 0 0-4-4l-2 2',
 };
 const icon = name => `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${paths[name] || paths.review}"/></svg>`;
 const button = (label, action, cls = 'secondary', extra = '') => `<button type="button" class="btn ${cls}" data-action="${action}" ${extra}>${label}</button>`;
 const badge = (label, cls = '') => `<span class="badge ${cls}" data-status="${e(label)}">${e(label)}</span>`;
 const MODULE_ICONS = { coherence:'Internal Code Coherence', verification:'Verifying Coding', definition:'Creating Code Definitions' };
+// The icons are alpha masks, so they take the colour of the surrounding text on light and dark surfaces.
+const assetIcon = name => `<span class="asset-icon" style="--icon:url('/Assets/icons/${name.toLowerCase().replaceAll(' ','-')}.png')" aria-hidden="true"></span>`;
+// The Althea mark (Assets/althea-mark.svg) inline, so the sidebar can show the light version.
+const LOGO = '<svg class="brand-logo" viewBox="0 0 48 48" aria-hidden="true"><path class="mark-bracket" d="M4 4.5h12.7v3.3H7.7v31.9h9V43H4z"/><path class="mark-box" d="M23.3 10.5H45v26.3H23.3v-3.6H26v.9h15.3V13.2H26v1.3h-2.7zM11.7 17h20v3.2h-20zM11.7 22.5h26.5v3.2H11.7zM11.7 28h20v3.2h-20z"/></svg>';
 const STAGES = [['import','Import'],['prepare','Prepare'],['scope','Scope'],['review','Review']];
 const RECORDS = [['codebook','Codebook'],['history','History']];
 const VIEWS = ['import','prepare','scope','review','confirm','codebook','history'];
@@ -110,10 +115,10 @@ function render(preserve = true) {
   if (preserve) captureScroll();
   const current = state.view === 'confirm' ? 'review' : state.view;
   const deferred = p() ? deferredSuggestions(p()).length : 0;
-  const navItem = ([key,label], i) => { const reason = blockedReason(key); return `<button class="nav-item ${current === key ? 'active' : ''}" data-view="${key}" aria-label="${i !== undefined ? `Step ${i + 1}: ` : ''}${label}${reason ? ` (${reason})` : ''}" title="${reason || label}" ${current === key ? 'aria-current="page"' : ''} ${reason ? 'disabled' : ''}>${i !== undefined ? `<b class="stage-num">${i + 1}</b>` : `<img class="asset-icon" src="/Assets/Icon-${label}_light.png" alt="">`}<span>${label}</span>${key === 'history' && deferred ? `<small>${deferred}</small>` : ''}</button>`; };
+  const navItem = ([key,label], i) => { const reason = blockedReason(key); return `<button class="nav-item ${current === key ? 'active' : ''}" data-view="${key}" aria-label="${i !== undefined ? `Step ${i + 1}: ` : ''}${label}${reason ? ` (${reason})` : ''}" title="${reason || label}" ${current === key ? 'aria-current="page"' : ''} ${reason ? 'disabled' : ''}>${i !== undefined ? `<b class="stage-num">${i + 1}</b>` : assetIcon(label)}<span>${label}</span>${key === 'history' && deferred ? `<small>${deferred}</small>` : ''}</button>`; };
   const title = [...STAGES,...RECORDS].find(([key]) => key === current)?.[1];
-  app.innerHTML = `<aside class="sidebar"><a class="brand" href="#" data-action="home" aria-label="Althea: start or switch project"><img class="brand-lockup" src="/Assets/Althea%20logo.png" alt="Althea"><img class="brand-symbol" src="/Assets/Althea_favicon.png" alt="Althea"></a>
-    <button class="project-switch" data-action="projects" aria-label="Saved projects: ${e(p()?.name || 'New project')}"><span class="project-avatar">${e((p()?.name || 'N').slice(0,1).toUpperCase())}</span><span><strong>${e(p()?.name || 'New project')}</strong><small>${p() ? (isPrepared(p()) ? 'Prepared · local project' : 'Imported · not prepared') : 'Start with two exports'}</small></span><span>⌄</span></button>
+  app.innerHTML = `<aside class="sidebar"><a class="brand" href="#" data-action="home" aria-label="Althea: start or switch project">${LOGO}<span class="brand-word">Althea</span></a>
+    <button class="project-switch" data-action="projects" title="${e(p()?.name || 'New project')}" aria-label="Saved projects: ${e(p()?.name || 'New project')}"><span class="project-avatar">${e((p()?.name || 'N').slice(0,1).toUpperCase())}</span><span><strong>${e(p()?.name || 'New project')}</strong></span><span class="switch-chevron">${icon('chevron')}</span></button>
     <p class="nav-label">WORKFLOW</p><nav aria-label="Workflow stages">${STAGES.map(navItem).join('')}</nav>
     <p class="nav-label">PROJECT RECORD</p><nav aria-label="Project record">${RECORDS.map(item => navItem(item)).join('')}</nav>
     <div class="sidebar-bottom"><div class="local-label"><span class="status-dot"></span> Local workspace</div><p>Your research stays on this device. Nothing is written back to ATLAS.ti.</p>${button(icon('plus') + ' New project', 'new-project', 'sidebar-btn')}<button class="text-button" data-action="projects">${icon('folder')} Saved projects</button></div></aside>
@@ -232,7 +237,7 @@ function scopeView() {
   const status = statusLabel(d);
   return `${pageHeader('STEP 3 · SCOPE', 'What do you want to examine?', 'Choose one scope, then a function. The prepared data stays as it is.')}
     <fieldset class="scope-set"><legend>Scope</legend><div class="scope-grid">${Object.entries(SCOPES).map(([key,s]) => `<label class="scope-card ${s.available ? '' : 'disabled'} ${key === 'single' ? 'selected' : ''}"><span class="scope-top"><input type="radio" name="scope" value="${key}" ${key === 'single' ? 'checked' : ''} ${s.available ? '' : 'disabled'}><strong>${s.title}</strong>${s.available ? '' : '<small>Not available yet</small>'}</span><span class="fine">${s.description}</span><span class="scope-functions">${s.functions.join('<br>')}</span></label>`).join('')}</div></fieldset>
-    <div class="split-layout scope-layout"><fieldset class="function-set"><legend>Function</legend>${Object.entries(MODULES).filter(([,m]) => m.scope === 'single').map(([key,m]) => `<label class="function-card ${d.module === key ? 'selected' : ''}"><input type="radio" name="fn" value="${key}" ${d.module === key ? 'checked' : ''}><img class="asset-icon" src="/Assets/Icon-${MODULE_ICONS[key]}_dark.png" alt=""><span><strong>${m.title}</strong><span class="fine">${m.question}</span></span></label>`).join('')}</fieldset>
+    <div class="split-layout scope-layout"><fieldset class="function-set"><legend>Function</legend>${Object.entries(MODULES).filter(([,m]) => m.scope === 'single').map(([key,m]) => `<label class="function-card ${d.module === key ? 'selected' : ''}"><input type="radio" name="fn" value="${key}" ${d.module === key ? 'checked' : ''}>${assetIcon(MODULE_ICONS[key])}<span><strong>${m.title}</strong><span class="fine">${m.question}</span></span></label>`).join('')}</fieldset>
     <section class="card code-pick"><label class="field"><span>Code</span><select id="scope-code">${codes.map(c => `<option value="${e(c.id)}" ${c.id === code?.id ? 'selected' : ''}>${e(c.label)} · ${plural(counts.get(c.id) || 0,'quotation')}</option>`).join('')}</select></label>
       <p class="code-status">${statusBadge(status === 'Not reviewed' && d.finding ? 'Under review' : status)} <span>${status === 'Not reviewed' ? `Not reviewed yet with ${e(MODULES[d.module].title)}.` : `${e(MODULES[d.module].title)} · ${e(ACTIONS[d.action] || '')}`}</span></p>
       <p class="fine">${code?.definition ? `<strong>Definition.</strong> ${e(code.definition)} ${e(code.boundary)}` : code?.importedComment ? `Code Manager comment: “${e(code.importedComment)}”` : 'No Code Manager comment and no definition yet.'}</p>
@@ -273,6 +278,12 @@ function saveQuotation(d, qid) {
   }
   if (current.rating !== saved.rating) d.classifications[qid] = { rating:current.rating, note:'', origin:'researcher' };
   if (!d.reviewStatus) d.reviewStatus = 'Under review';
+  if (current.choice === 'uncode') {
+    const { removed } = uncodeQuotation(p(), d, qid);
+    delete d.quotationDecisions?.[qid]; delete d.quotationDrafts?.[qid];
+    (d.movedOut ||= []).push({ quotationId:qid, codeId:'', uncoded:true, at:new Date().toISOString() });
+    return `${q.quotationId} uncoded: ${plural(removed.length,'assignment')} removed and the quotation taken out of the dataset. Recorded in the history.`;
+  }
   // Moving a quotation is applied straight away and recorded on its own; the code's suggestion stays open.
   if (current.choice !== 'keep') {
     const { target, alreadyThere } = moveQuotation(p(), d, qid, { choice:current.choice, targetCodeId:current.targetCodeId, newLabel:current.newLabel.trim() });
@@ -292,33 +303,34 @@ function quoteCard(q, d) {
   const locked = ['Approved','Rejected'].includes(normalStatus(d.reviewStatus));
   // Althea's reading comes from the finding itself, so it stays visible after the researcher reclassifies.
   const reading = d.finding?.classifications?.[q.id], cited = d.finding?.evidenceIds?.includes(q.id);
-  const choices = [['keep',`Keep “${code.label}”`],['existing','Change to an existing code'],['new','Create a new code']];
+  const choices = [['keep',`Keep “${code.label}”`],['existing','Change to an existing code'],['new','Create a new code'],['uncode','Uncode quotation']];
   const picker = value => value === 'existing' && current.choice === 'existing' ? `<select class="choice-picker" data-qtarget="${q.id}" aria-label="Existing code for quotation ${e(q.quotationId)}">${codeOptions(current.targetCodeId,{exclude:[code.id]})}</select>`
-    : value === 'new' && current.choice === 'new' ? `<input class="choice-picker" id="qnew-${q.id}" data-qnewlabel="${q.id}" value="${e(current.newLabel)}" placeholder="Name of the new code" aria-label="New code for quotation ${e(q.quotationId)}">` : '';
+    : value === 'new' && current.choice === 'new' ? `<input class="choice-picker" id="qnew-${q.id}" data-qnewlabel="${q.id}" value="${e(current.newLabel)}" placeholder="Name of the new code" aria-label="New code for quotation ${e(q.quotationId)}">`
+    : value === 'uncode' && current.choice === 'uncode' ? `<p class="choice-picker fine">For text that should not have been coded, such as an interviewer's turn. Removes ${others.length ? `its ${others.length + 1} codes` : 'its code'} and takes the quotation out of the working dataset.</p>` : '';
   const savedAt = d.quotationSavedAt?.[q.id], error = state.quoteError?.qid === q.id ? state.quoteError.message : '';
   return `<article id="quote-${q.id}" tabindex="-1" class="quote-card evidence-card ${current.rating ? 'rated-' + e(current.rating.toLowerCase()) : ''} ${current.choice !== 'keep' ? 'is-moving' : ''} ${dirty ? 'is-dirty' : ''}"><div class="evidence-main"><p class="quote-meta"><span class="mono">${e(q.quotationId)}</span> · ${e(q.source || 'Source not provided')} · ${e(q.coder || 'Coder not provided')}${cited ? ' ' + badge('Cited in finding','cited') : ''}${flag ? ' ' + badge('Flagged borderline','amber') : ''}</p>
     <p class="quotation-text">“${e(q.text)}”</p>${reading ? `<div class="althea-reading"><span class="eyebrow">Althea on this quotation</span><p><strong>${e(reading.rating)}.</strong> ${e(reading.note)}</p>${current.rating && current.rating !== reading.rating ? `<p class="fine">You classified it as ${e(current.rating)}.</p>` : ''}</div>` : ''}${q.note ? `<p class="evidence-note">Note: ${e(q.note)}</p>` : ''}${others.length ? `<div class="chip-row">${others.map(c => `<span class="chip">Also: ${e(c)}</span>`).join('')}</div>` : ''}</div>
     <div class="evidence-controls"><label class="field classify"><span>Your classification${dirty || classification.origin === 'researcher' || !current.rating ? '' : ' <small>as Althea suggests</small>'}</span><select data-classify="${q.id}" ${locked ? 'disabled' : ''}><option value="">Not classified</option>${MODULES[d.module].classes.map(v => `<option ${current.rating === v ? 'selected' : ''}>${v}</option>`).join('')}</select></label>
     <fieldset class="quote-decision" ${locked ? 'disabled' : ''}><legend>Code for this quotation</legend>${choices.map(([value,label]) => `<label class="choice"><input type="radio" name="qd-${q.id}" value="${value}" data-qdecision="${q.id}" ${current.choice === value ? 'checked' : ''}><span>${e(label)}</span></label>${picker(value)}`).join('')}</fieldset>
-    ${locked ? '' : `<div class="quote-save">${error ? `<p class="field-error" role="alert">${e(error)}</p>` : ''}<span class="save-note" data-save-note="${q.id}">${dirty ? 'Unsaved changes' : savedAt ? 'Saved ' + date(savedAt) : ''}</span>${dirty && current.choice !== 'keep' ? `<span class="fine">Saving moves this quotation out of “${e(code.label)}” now. The move is kept in the history.</span>` : ''}<div class="button-row">${button('Save changes','save-quotation','primary',`data-id="${q.id}" ${dirty ? '' : 'disabled'}`)}${dirty ? button('Discard','discard-quotation','quiet',`data-id="${q.id}"`) : ''}</div></div>`}</div></article>`;
+    ${locked ? '' : `<div class="quote-save">${error ? `<p class="field-error" role="alert">${e(error)}</p>` : ''}<span class="save-note" data-save-note="${q.id}">${dirty ? 'Unsaved changes' : savedAt ? 'Saved ' + date(savedAt) : ''}</span>${dirty && current.choice === 'uncode' ? `<span class="fine">Saving uncodes this quotation now${others.length ? `, also from ${others.map(c => `“${e(c)}”`).join(', ')}` : ''}. The originals and the history keep it.</span>` : dirty && current.choice !== 'keep' ? `<span class="fine">Saving moves this quotation out of “${e(code.label)}” now. The move is kept in the history.</span>` : ''}<div class="button-row">${button('Save changes','save-quotation','primary',`data-id="${q.id}" ${dirty ? '' : 'disabled'}`)}${dirty ? button('Discard','discard-quotation','quiet',`data-id="${q.id}"`) : ''}</div></div>`}</div></article>`;
 }
 function evidenceSection(d) {
   const code = selectedCode(), all = quotesFor(p(), code.id), search = filter('evidenceSearch').toLowerCase(), cls = filter('evidenceClass');
   const shown = all.filter(q => (!search || `${q.text} ${q.quotationId} ${q.source}`.toLowerCase().includes(search)) && (!cls || (d.classifications[q.id]?.rating || '') === (cls === '-' ? '' : cls)));
   const limit = filter('evidenceAll') ? shown.length : 8, counts = classCounts(d, all);
   const moving = d.movedOut?.length || 0, unsaved = unsavedQuotations(d).length;
-  return `<div class="stack"><div class="column-heading"><h2>Reviewing the quotations</h2><p class="fine">Read each quotation, classify it, and decide which code it belongs to.</p></div><section class="card evidence-section"><div class="section-heading"><span class="fine">${counts.length ? counts.map(([c,k]) => `${n(k)} ${c.toLowerCase()}`).join(' · ') : plural(all.length,'quotation') + ' · not classified yet'}</span>${moving || unsaved ? `<span class="fine">${moving ? `<strong>${plural(moving,'quotation')}</strong> moved to another code` : ''}${moving && unsaved ? ' · ' : ''}${unsaved ? `<strong class="unsaved">${n(unsaved)} unsaved</strong>` : ''}</span>` : ''}</div>
+  return `<div class="stack"><div class="column-heading"><h2>Reviewing the quotations</h2></div><section class="card evidence-section"><div class="section-heading"><span class="fine">${counts.length ? counts.map(([c,k]) => `${n(k)} ${c.toLowerCase()}`).join(' · ') : plural(all.length,'quotation') + ' · not classified yet'}</span>${moving || unsaved ? `<span class="fine">${moving ? `<strong>${plural(moving,'quotation')}</strong> moved to another code` : ''}${moving && unsaved ? ' · ' : ''}${unsaved ? `<strong class="unsaved">${n(unsaved)} unsaved</strong>` : ''}</span>` : ''}</div>
     <div class="toolbar"><label class="search compact">${icon('search')}<input id="evidence-search" data-filter="evidenceSearch" value="${e(filter('evidenceSearch'))}" placeholder="Search within quotations" aria-label="Search evidence"></label><select id="evidence-class" data-filter="evidenceClass" aria-label="Filter by classification"><option value="">All classifications</option>${MODULES[d.module].classes.map(c => `<option ${c === cls ? 'selected' : ''}>${c}</option>`).join('')}<option value="-" ${cls === '-' ? 'selected' : ''}>Not classified</option></select></div>
     ${shown.length ? `<div class="evidence-list">${shown.slice(0,limit).map(q => quoteCard(q,d)).join('')}</div>` : empty('No quotations to show', all.length ? 'Change the search or filter.' : 'This code has no quotations assigned.')}
-    ${d.movedOut?.length ? `<div class="moved-list"><p class="eyebrow">Moved out during this review</p><ul>${d.movedOut.map(m => `<li><span class="mono">${e(p().quotations.find(q => q.id === m.quotationId)?.quotationId)}</span> → ${e(codeLabel(m.codeId))} <span class="fine">· ${date(m.at)}</span></li>`).join('')}</ul></div>` : ''}
+    ${d.movedOut?.length ? `<div class="moved-list"><p class="eyebrow">Moved or uncoded during this review</p><ul>${d.movedOut.map(m => `<li><span class="mono">${e(p().quotations.find(q => q.id === m.quotationId)?.quotationId)}</span> → ${m.uncoded ? 'uncoded, out of the dataset' : e(codeLabel(m.codeId))} <span class="fine">· ${date(m.at)}</span></li>`).join('')}</ul></div>` : ''}
     <div class="section-footer"><span class="fine">Showing ${n(Math.min(limit,shown.length))} of ${plural(all.length,'quotation')}.</span><div class="button-row">${shown.length > limit ? button(`Show all ${n(shown.length)}`,'show-all-evidence','quiet') : ''}${['Approved','Rejected'].includes(normalStatus(d.reviewStatus)) ? '' : button('Save review','save-review','secondary')}</div></div></section></div>`;
 }
 function findingCard(d) {
   const f = d.finding;
-  if (state.providerBusy) return `<section class="card finding-card"><h2>Althea’s finding</h2><div role="status" class="button-row"><span class="spinner small"></span><span>Analysing ${e(selectedCode().label)}…${state.pi.available ? ' This usually takes about a minute.' : ''}</span>${button('Cancel','cancel-analysis','quiet')}</div></section>`;
+  if (state.providerBusy) return `<section class="card finding-card"><h2>Althea’s finding</h2><div role="status" class="button-row"><span class="spinner small"></span><span>Analysing ${e(selectedCode().label)}…${state.pi.available ? ' This usually takes a minute or two: Pi analyses, then explains its finding.' : ''}</span>${button('Cancel','cancel-analysis','quiet')}</div></section>`;
   // Offered only after Pi could not run, so a lexical demonstration is always a deliberate choice.
   const simulateOffer = state.providerError && !state.pi.available ? `<p class="fine">To try the workflow without Pi, ${button('run the lexical simulation','simulate','quiet')} instead. It matches words only and is labelled as a simulation.</p>` : '';
-  if (!f) return `<section class="card finding-card"><h2>Althea’s finding</h2><p class="fine">Althea compares the quotations with the label and its meaning, then separates the evidence, interpretation, confidence and suggestion. Nothing in the project changes.</p>${button('Run ' + e(MODULES[d.module].title),'analyze','primary full-width')}${state.providerError ? `<p class="field-error" role="alert">${e(state.providerError)}</p>` : ''}${simulateOffer}<p class="fine">You can also classify the quotations and decide without a finding.</p></section>`;
+  if (!f) return `<section class="card finding-card"><h2>Althea’s finding</h2>${button('Run ' + e(MODULES[d.module].title),'analyze','primary full-width')}${state.providerError ? `<p class="field-error" role="alert">${e(state.providerError)}</p>` : ''}${simulateOffer}</section>`;
   const stale = f.projectRevision !== undefined && (f.projectRevision !== p().revision || (f.preparationVersion || 1) !== (p().preparation.version || 1));
   const row = (label, text) => text ? `<div class="finding-row"><dt>${label}</dt><dd>${e(text)}</dd></div>` : '';
   return `<section class="card finding-card finding"><div class="section-heading"><h2>Althea’s finding</h2>${f.rating ? `<span class="rating">${e(f.rating)}</span>` : ''}</div>
@@ -328,8 +340,25 @@ function findingCard(d) {
     ${stale ? '<p class="alert warning">The project changed after this analysis. Run it again before relying on it.</p>' : ''}
     ${state.providerError ? `<p class="alert error" role="alert">${e(state.providerError)} The finding below is from the previous run.</p>${simulateOffer}` : ''}
     ${f.origin !== 'pi' && f.origin ? '<p class="alert warning">This finding is from the lexical simulation, not Pi. Analyse again for Pi’s reading.</p>' : ''}
+    ${f.justification ? justificationDetails(f.justification) : ''}
+    ${piSettings().showTrace && f.trace ? traceDetails(f.trace) : ''}
     <details><summary>How this was produced</summary>${f.questions ? f.questions.map((q,i) => `<p><strong>${i+1}. ${e(q.question)}</strong><br>${e(q.answer)}</p>`).join('') : ''}${f.limitation ? `<p><strong>Limitation:</strong> ${e(f.limitation)}</p>` : ''}<p class="fine">${e(f.provenance)}${f.timestamp ? ' · ' + date(f.timestamp) : ''}</p>${d.analysisHistory?.length ? `<p class="fine">${plural(d.analysisHistory.length,'earlier run')} kept with this suggestion.</p>` : ''}</details>
     ${['Approved','Rejected'].includes(normalStatus(d.reviewStatus)) ? '' : button('Analyse again','analyze','quiet')}</section>`;
+}
+// Pi's own account of the finding, asked for in the same session. It is a self-explanation, so it is labelled as one.
+function justificationDetails(j) {
+  const part = (label, text) => text?.trim() ? `<div class="finding-row"><dt>${label}</dt><dd>${e(text)}</dd></div>` : '';
+  return `<details class="justification"><summary>Why AI reached this finding</summary><p class="fine">The AI wrote this in the same session, after submitting the finding, from what it had read there. It is the model’s explanation of its finding, not a record of its internal reasoning: check it against the quotations.</p><dl>${part('How it reached the finding',j.reasoning)}${part('Readings it set aside',j.alternatives)}${part('Least certain about',j.uncertainty)}</dl></details>`;
+}
+// The agent's reasoning and tool use for one run, shown only when the researcher turns it on in Settings.
+function traceDetails(trace) {
+  const thought = trace.filter(t => t.kind === 'thinking'), shared = thought.filter(t => !t.redacted).length;
+  const note = shared ? '' : thought.length ? ' The model reasoned, but its provider did not share the reasoning text, so only its tool use is shown. Models whose providers share reasoning show it here.' : ' No reasoning was returned for this run: raise Thinking in Settings, or the provider may not share it.';
+  const step = t => t.kind === 'thinking' ? `<li class="trace-thinking"><span class="eyebrow">Reasoning</span>${t.redacted ? '<p class="fine">Not shared by the model provider.</p>' : `<p>${e(t.text)}</p>`}</li>`
+    : t.kind === 'text' ? `<li class="trace-text"><span class="eyebrow">Note</span><p>${e(t.text)}</p></li>`
+    : t.kind === 'tool' ? `<li class="trace-tool"><span class="eyebrow">${({ submit_finding:'Submitted the finding', explain_finding:'Explained the finding' })[t.name] || `Used ${e(t.name)}`}</span>${t.text && t.text !== '{}' ? `<code>${e(t.text)}</code>` : ''}</li>`
+    : `<li class="trace-result"><details><summary>${t.error ? 'Tool error' : 'Result'} · ${e(t.name)}</summary><p class="full-text">${e(t.text)}</p></details></li>`;
+  return `<details class="trace"><summary>Reasoning trace · ${plural(trace.length,'step')}</summary><p class="fine">What the model reported while it worked: its reasoning and the tools it used, in order. Providers often summarise or withhold reasoning, so this shows how the reading was reached, not proof that it holds.${note}</p><ol class="trace-steps">${trace.map(step).join('')}</ol></details>`;
 }
 function actionFields(d) {
   let html = selectField('Action','action',d.action,Object.entries(ACTIONS).filter(([key]) => key !== 'recode' || d.action === 'recode'));
@@ -344,7 +373,7 @@ function actionFields(d) {
 }
 function decisionForm(d) {
   const status = normalStatus(d.reviewStatus), m = MODULES[d.module];
-  if (status === 'Approved' || status === 'Rejected') return `<section class="card decision-card"><h2>Decision</h2><p>${statusBadge(statusLabel(d))} ${e(ACTIONS[d.action] || '')}${d.resolvedAt ? ' · ' + date(d.resolvedAt) : ''}</p><p class="rationale">${e(d.rationale)}</p><p class="fine">${status === 'Approved' ? 'The change is saved to the project; the previous values are kept in the history.' : 'The project data was not changed. The rejection and its reason are kept in the history.'} To review this code again, run a new analysis.</p>${button('Start a new analysis','analyze','secondary full-width')}</section>`;
+  if (status === 'Approved' || status === 'Rejected') return `<section class="card decision-card"><h2>Decision</h2><p>${statusBadge(statusLabel(d))} ${e(ACTIONS[d.action] || '')}${d.resolvedAt ? ' · ' + date(d.resolvedAt) : ''}</p>${reason(d.rationale)}<p class="fine">${status === 'Approved' ? 'The change is saved to the project; the previous values are kept in the history.' : 'The project data was not changed. The rejection and its reason are kept in the history.'} To review this code again, run a new analysis.</p>${button('Start a new analysis','analyze','secondary full-width')}</section>`;
   if (status === 'Deferred') return `<section class="card decision-card"><h2>Decision</h2><p>${badge('Deferred')} ${e(ACTIONS[d.action] || '')}${d.resolvedAt ? ' · ' + date(d.resolvedAt) : ''}</p>${reason(d.rationale)}<p class="fine">The data is unchanged. Reopen the suggestion to continue with the original evidence.</p>${button('Reopen','reopen','primary full-width',`data-key="${e(draftKey(d.module,d.codeIds))}"`)}</section>`;
   return `<form class="card decision-card decision-section" onsubmit="return false"><h2>Your decision on the code</h2>
     ${m.ratings.length ? selectField(d.module === 'coherence' ? 'Your coherence rating' : 'Your validity rating','assessment',d.assessment,[['','Not rated'],...m.ratings.map(r => [r,r === 'Weak' && d.module === 'verification' ? 'Weak / misaligned' : r])]) : ''}
@@ -352,16 +381,16 @@ function decisionForm(d) {
     ${d.module === 'definition' ? `${field('Core concept','core',d.core,{textarea:true,placeholder:'The central meaning of this code.'})}${field('Boundary rule','boundary',d.boundary,{textarea:true,placeholder:'Apply when… Do not apply when…'})}<p class="word-count fine ${countWords(d.core + ' ' + d.boundary) > 50 ? 'field-error' : ''}" id="word-count">${countWords(d.core + ' ' + d.boundary)} of 50 words</p>` : ''}
     ${actionFields(d)}
     ${d.editing ? field('Suggestion, as you edited it','recommendation',d.recommendation,{textarea:true}) : ''}
-    ${field('Rationale <small>required to approve or reject</small>','rationale',d.rationale,{textarea:true,placeholder:'Explain the decision and how the evidence supports it.'})}
+    ${field('Rationale <small>optional</small>','rationale',d.rationale,{textarea:true,placeholder:'Why this decision, and how the evidence supports it. Recorded in the history.'})}
     <div class="decision-buttons">${button('Approve','approve','primary')}${d.editing ? '' : button('Edit suggestion','edit-suggestion','secondary')}${button('Defer','defer','secondary')}${button('Reject','reject','secondary')}</div>
-    <p class="fine">Quotation moves on the left are saved as you make them. This decision is about the code itself: nothing changes until you confirm it on the next screen, and rejecting or deferring leaves the code as it is.</p></form>`;
+    </form>`;
 }
 function reviewView() {
   const project = p(), d = draft(), code = selectedCode(), m = MODULES[d.module];
   if (!code) return pageHeader('STEP 4 · REVIEW','Review','No active code is available.') + empty('Nothing to review','Choose a code in Scope.',`<button class="btn primary" data-view="scope">Choose scope</button>`);
   const quotes = quotesFor(project, code.id), status = d.reviewStatus ? statusLabel(d) : d.finding ? 'Under review' : 'Not analysed';
   return `<div class="page-heading review-heading"><div><p class="eyebrow">Single code · ${e(m.title)}</p><h1 id="page-title" tabindex="-1">${e(code.label)}</h1><p class="muted">${plural(quotes.length,'quotation')} · ${code.definition ? `Definition: “${e(code.definition)}”` : code.importedComment ? `Code Manager comment: “${e(code.importedComment)}”` : 'No Code Manager comment'}</p></div><div class="heading-actions">${statusBadge(status)}<button class="btn quiet" data-view="scope">${icon('back')} Change scope</button></div></div>
-    <div class="review-layout">${evidenceSection(d)}<aside class="stack decision-column"><div class="column-heading"><h2>Reviewing the code</h2><p class="fine">Althea’s finding for “${e(code.label)}” as a whole, and your decision on it.</p></div>${findingCard(d)}${decisionForm(d)}</aside></div>`;
+    <div class="review-layout">${evidenceSection(d)}<aside class="stack decision-column"><div class="column-heading"><h2>Reviewing the code</h2></div>${findingCard(d)}${decisionForm(d)}</aside></div>`;
 }
 
 // Quotation changes come from the researcher's choice for each quotation. Borderline flags are added only
@@ -430,7 +459,7 @@ function confirmView() {
   return `${pageHeader(`${e(code.label)} · ${e(m.title)} · ${e(ACTIONS[d.action])}`,'Confirm the change','This is what will be saved to the project. The ATLAS.ti exports stay untouched, and the previous values are kept.')}
     <div class="split-layout confirm-layout"><form class="stack" onsubmit="return false">${main}
       <section class="card"><h2>Quotation changes</h2>${newCodes.length ? `<p class="fine">Creates ${plural(newCodes.length,'new code')}: ${newCodes.map(l => `“${e(l)}”`).join(', ')}. ${newCodes.length > 1 ? 'They join' : 'It joins'} the codebook at the top level.</p>` : ''}${changes.length ? `<div class="change-list">${changes.map(([qid,c]) => { const q = p().quotations.find(x => x.id === qid); return `<label class="change-item ${c.include ? '' : 'excluded'}"><input type="checkbox" data-qchange="${qid}" ${c.include ? 'checked' : ''} ><span><span><span class="mono">${e(q.quotationId)}</span> · ${describe(qid,c)}</span><span class="change-quote">“${e(q.text)}”${c.include ? '' : ' <em>Not selected: stays as it is.</em>'}</span></span></label>`; }).join('')}</div>` : `<p class="fine">No quotation changes.${d.movedOut?.length ? ` ${plural(d.movedOut.length,'quotation')} already moved during the review ${d.movedOut.length > 1 ? 'are' : 'is'} recorded in the history.` : ''}</p>`}</section>
-      <section class="card"><h2>Rationale</h2><p class="rationale">${e(d.rationale)}</p><p class="fine">Evidence linked: ${plural(d.evidenceIds.length,'quotation')}${d.assessment ? `, ${d.module === 'coherence' ? 'coherence' : 'validity'} rating ${e(d.assessment)}` : ''}. Researcher: ${e(p().reviewer)}.</p></section>
+      <section class="card"><h2>Rationale</h2>${reason(d.rationale)}<p class="fine">Evidence linked: ${plural(d.evidenceIds.length,'quotation')}${d.assessment ? `, ${d.module === 'coherence' ? 'coherence' : 'validity'} rating ${e(d.assessment)}` : ''}. Researcher: ${e(p().reviewer)}.</p></section>
       <div class="create-row">${button('Confirm and save','confirm-save','primary')}<button class="btn secondary" data-view="review">${icon('back')} Back to review</button><p class="fine">${parts.length ? `Saves ${parts.join(' and ')}.` : 'Records the decision; no data changes.'} The suggestion becomes Approved.</p></div></form>
       <aside class="card decision-history"><h2>Decision history</h2><div class="suggestion-list">${suggestionItem(d,draftKey(d.module,d.codeIds),true)}${Object.entries(p().drafts).filter(([key,x]) => key !== draftKey(d.module,d.codeIds) && x.reviewStatus).sort(([,a],[,b]) => String(b.resolvedAt || '').localeCompare(String(a.resolvedAt || ''))).slice(0,8).map(([key,x]) => suggestionItem(x,key)).join('')}</div><button class="text-button" data-view="history">Full history ${icon('arrow')}</button></aside></div>`;
 }
@@ -450,14 +479,14 @@ function codebookView() {
   walk(null,0); sorted.filter(c => !visited.has(c.id) && matching(c)).forEach(c => ordered.push({c,depth:0}));
   const page = Math.min(Number(filter('bookPage',0)),Math.max(0,Math.ceil(ordered.length / 35) - 1));
   const flagged = new Map(); project.assignments.filter(a => a.flag).forEach(a => flagged.set(a.codeId,(flagged.get(a.codeId) || 0) + 1));
-  return `${pageHeader('PROJECT RECORD','Working codebook','Confirmed changes appear here. Every imported value remains recoverable from the source files.',button(icon('download') + ' Export codebook','export-codebook'))}<section class="card table-card"><div class="toolbar"><label class="search">${icon('search')}<input id="book-search" data-filter="bookSearch" value="${e(filter('bookSearch'))}" placeholder="Search names and definitions" aria-label="Search codebook"></label><select id="book-mode" data-filter="bookMode" aria-label="Filter codebook">${[['all','Active codes'],['unused','No quotations'],['defined','With definitions'],['reviewed','Reviewed'],['archived','Merged, retired or archived']].map(([v,l]) => `<option value="${v}" ${mode === v ? 'selected' : ''}>${l}</option>`).join('')}</select><span class="fine">${plural(ordered.length,'code')}</span></div><div class="table-wrap"><table class="codebook-table"><thead><tr><th>Code & hierarchy</th><th>Definition & boundaries</th><th>Quotations</th><th>Review</th></tr></thead><tbody>${ordered.slice(page * 35,(page + 1) * 35).map(({c,depth}) => `<tr><td><div class="tree-label" style="padding-left:${Math.min(depth,5) * 18}px">${depth ? '<span class="branch">↳</span>' : '<span class="code-dot"></span>'}<strong>${e(c.label)}</strong></div>${c.parentId ? `<small>Parent: ${e(codeLabel(c.parentId))}</small>` : ''}<small>${c.sourceRows.length ? 'Source rows: ' + e(c.sourceRows.join(', ')) : 'Created in this workspace'}${c.mergedInto ? ' · Merged into ' + e(codeLabel(c.mergedInto)) : ''}${c.retired ? ' · Retired' : ''}</small></td><td>${c.definition ? `<p>${e(c.definition)}</p><small>${e(c.boundary)}</small>` : c.importedComment ? `<p>${e(c.importedComment)}</p><small>Imported comment; not an approved definition</small>` : '<span class="muted">No approved definition</span>'}</td><td class="mono">${n(counts.get(c.id))}${flagged.get(c.id) ? `<small>${n(flagged.get(c.id))} borderline</small>` : ''}</td><td>${c.active ? `${statusBadge(codeStatus(c.id))}${button('Review ' + icon('arrow'),'review-code','quiet',`data-id="${c.id}"`)}` : badge(c.retired ? 'Retired' : 'Archived')}</td></tr>`).join('')}</tbody></table></div>${!ordered.length ? empty('No matching codes','Try another search or filter.') : ''}${pagination(page,ordered.length,35,'bookPage')}</section>`;
+  return `${pageHeader('PROJECT RECORD','Working codebook','Confirmed changes appear here. Every imported value remains recoverable from the source files.',button(icon('download') + ' Export final files','export-files'))}<section class="card table-card"><div class="toolbar"><label class="search">${icon('search')}<input id="book-search" data-filter="bookSearch" value="${e(filter('bookSearch'))}" placeholder="Search names and definitions" aria-label="Search codebook"></label><select id="book-mode" data-filter="bookMode" aria-label="Filter codebook">${[['all','Active codes'],['unused','No quotations'],['defined','With definitions'],['reviewed','Reviewed'],['archived','Merged, retired or archived']].map(([v,l]) => `<option value="${v}" ${mode === v ? 'selected' : ''}>${l}</option>`).join('')}</select><span class="fine">${plural(ordered.length,'code')}</span></div><div class="table-wrap"><table class="codebook-table"><thead><tr><th>Code & hierarchy</th><th>Definition & boundaries</th><th>Quotations</th><th>Review</th></tr></thead><tbody>${ordered.slice(page * 35,(page + 1) * 35).map(({c,depth}) => `<tr><td><div class="tree-label" style="padding-left:${Math.min(depth,5) * 18}px">${depth ? '<span class="branch">↳</span>' : '<span class="code-dot"></span>'}<strong>${e(c.label)}</strong></div>${c.parentId ? `<small>Parent: ${e(codeLabel(c.parentId))}</small>` : ''}<small>${c.sourceRows.length ? 'Source rows: ' + e(c.sourceRows.join(', ')) : 'Created in this workspace'}${c.mergedInto ? ' · Merged into ' + e(codeLabel(c.mergedInto)) : ''}${c.retired ? ' · Retired' : ''}</small></td><td>${c.definition ? `<p>${e(c.definition)}</p><small>${e(c.boundary)}</small>` : c.importedComment ? `<p>${e(c.importedComment)}</p><small>Imported comment; not an approved definition</small>` : '<span class="muted">No approved definition</span>'}</td><td class="mono">${n(counts.get(c.id))}${flagged.get(c.id) ? `<small>${n(flagged.get(c.id))} borderline</small>` : ''}</td><td>${c.active ? `${statusBadge(codeStatus(c.id))}${button('Review ' + icon('arrow'),'review-code','quiet',`data-id="${c.id}"`)}` : badge(c.retired ? 'Retired' : 'Archived')}</td></tr>`).join('')}</tbody></table></div>${!ordered.length ? empty('No matching codes','Try another search or filter.') : ''}${pagination(page,ordered.length,35,'bookPage')}</section>`;
 }
-function actionName(action) { return ({move:'Moved quotation',review:'Saved review',reopen:'Reopened',reject:'Rejected suggestion',defer:'Deferred decision',note:'Review note',...ACTIONS})[action] || action; }
+function actionName(action) { return ({move:'Moved quotation',uncode:'Uncoded quotation',review:'Saved review',reopen:'Reopened',reject:'Rejected suggestion',defer:'Deferred decision',note:'Review note',...ACTIONS})[action] || action; }
 function historyView() {
   const query = filter('historySearch').toLowerCase(), status = filter('historyStatus');
   const history = p().history.filter(h => (!status || normalStatus(h.status) === status) && (!query || `${h.rationale} ${actionName(h.action)} ${h.affectedCodeIds.map(codeLabel).join(' ')}`.toLowerCase().includes(query))).reverse();
   return `${pageHeader('PROJECT RECORD','Decision history','Approved, rejected and deferred decisions stay connected to their evidence, rationale, researcher and time.',button(icon('download') + ' Export history','export-history'))}${deferredList()}<div class="toolbar history-toolbar"><label class="search">${icon('search')}<input id="history-search" data-filter="historySearch" value="${e(filter('historySearch'))}" placeholder="Search decisions, codes, or rationale" aria-label="Search history"></label><select id="history-status" data-filter="historyStatus" aria-label="Filter decisions"><option value="">All decisions</option>${STATUSES.map(s => `<option ${s === status ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
-    ${history.length ? `<div class="history-list">${history.map(h => { const review = p().reviews.find(r => r.id === h.reviewId); const label = statusLabel(h); const key = review ? draftKey(review.module,review.codeIds) : ''; const live = p().drafts[key]; return `<article class="card history-card"><div class="history-top"><span class="history-marker">${icon(h.status === 'Deferred' ? 'history' : 'check')}</span><div><h2>${e(actionName(h.action))}</h2><p>${e(h.affectedCodeIds.map(codeLabel).join(' · '))}</p></div>${statusBadge(label)}</div>${reason(h.rationale)}<div class="history-meta"><span>${e(h.reviewer)} · ${date(h.timestamp)}</span><span>${MODULES[review?.module]?.title || 'Review'} · ${plural(h.evidenceIds.length,'evidence quotation')}</span></div><details><summary>Evidence, assessment & change details</summary>${review ? `<div class="recorded-assessment">${review.assessment ? `<p><strong>Rating:</strong> ${e(review.assessment)}</p>` : ''}${review.subgroups ? `<p><strong>Subgroups:</strong> ${e(review.subgroups)}</p>` : ''}${review.core ? `<p><strong>Definition:</strong> ${e(review.core)} ${e(review.boundary)}</p>` : ''}${review.recommendation ? `<p><strong>Suggestion:</strong> ${e(review.recommendation)}</p>` : ''}${review.finding?.interpretation ? `<p><strong>Finding:</strong> ${e(review.finding.interpretation)} <small>${e(review.finding.provenance)}</small></p>` : ''}</div>` : ''}${changeDetails(h)}</details>${live && normalStatus(live.reviewStatus) === 'Deferred' && live.lastReviewId === h.reviewId ? button('Reopen','reopen','secondary',`data-key="${e(key)}"`) : ''}</article>`; }).join('')}</div>` : empty('No recorded decisions here yet','Complete a review to keep its evidence and rationale in your history.',p() && isPrepared(p()) ? `<button class="btn primary" data-view="scope">Choose what to review</button>` : '')}`;
+    ${history.length ? `<div class="history-list">${history.map(h => { const review = p().reviews.find(r => r.id === h.reviewId); const label = statusLabel(h); const key = review ? draftKey(review.module,review.codeIds) : ''; const live = p().drafts[key]; return `<article class="card history-card"><div class="history-top"><span class="history-marker">${icon(h.status === 'Deferred' ? 'history' : 'check')}</span><div><h2>${e(actionName(h.action))}</h2><p>${e(h.affectedCodeIds.map(codeLabel).join(' · '))}</p></div>${statusBadge(label)}</div>${reason(h.rationale)}<div class="history-meta"><span>${e(h.reviewer)} · ${date(h.timestamp)}</span><span>${MODULES[review?.module]?.title || 'Review'} · ${plural(h.evidenceIds.length,'evidence quotation')}</span></div><details><summary>Evidence, assessment & change details</summary>${review ? `<div class="recorded-assessment">${review.assessment ? `<p><strong>Rating:</strong> ${e(review.assessment)}</p>` : ''}${review.subgroups ? `<p><strong>Subgroups:</strong> ${e(review.subgroups)}</p>` : ''}${review.core ? `<p><strong>Definition:</strong> ${e(review.core)} ${e(review.boundary)}</p>` : ''}${review.recommendation ? `<p><strong>Suggestion:</strong> ${e(review.recommendation)}</p>` : ''}${review.finding?.interpretation ? `<p><strong>Finding:</strong> ${e(review.finding.interpretation)} <small>${e(review.finding.provenance)}</small></p>` : ''}${review.finding?.justification?.reasoning ? `<p><strong>Pi’s justification:</strong> ${e(review.finding.justification.reasoning)}</p>` : ''}</div>` : ''}${changeDetails(h)}</details>${live && normalStatus(live.reviewStatus) === 'Deferred' && live.lastReviewId === h.reviewId ? button('Reopen','reopen','secondary',`data-key="${e(key)}"`) : ''}</article>`; }).join('')}</div>` : empty('No recorded decisions here yet','Complete a review to keep its evidence and rationale in your history.',p() && isPrepared(p()) ? `<button class="btn primary" data-view="scope">Choose what to review</button>` : '')}`;
 }
 function changeDetails(change) {
   const changes = change.codeChanges || [], removed = change.removed || [], added = change.added || [], flagged = change.flagged || [];
@@ -492,11 +521,11 @@ async function loadExample() {
   if (p()) await persist(true);
   resetImport(); state.view = 'import'; state.loading = true; state.loadingMessage = 'Opening the example exports'; render(false);
   try {
-    const files = await Promise.all([['quotation','quotations','Training Data - Quotation Manager.xlsx'],['codes','codes','Training Data - Code Manager.xlsx']].map(async ([kind,path,name]) => {
+    const files = await Promise.all([['quotation','quotations','Example Data - Quotation Manager.xlsx'],['codes','codes','Example Data - Code Manager.xlsx']].map(async ([kind,path,name]) => {
       const response = await fetch(`/samples/${path}.xlsx`); if (!response.ok) throw new Error(`The supplied ${kind} export could not be found.`);
       return [kind,await readExport(new Uint8Array(await response.arrayBuffer()),name,kind)];
     }));
-    state.imports = Object.fromEntries(files); state.importName = state.imports.quotation.metadata.Project || 'Training data'; recalculateImports();
+    state.imports = Object.fromEntries(files); state.importName = state.imports.quotation.metadata.Project || 'Example data'; recalculateImports();
   } catch(error) { state.importErrors.quotation = error.message; }
   finally { state.loading = false; render(false); }
 }
@@ -526,7 +555,23 @@ async function analyze(simulate = false) {
   finally { if (state.analysisController === controller) { state.providerBusy = false; state.analysisController = null; render(); } }
 }
 // Settings: the researcher's name, how Pi analyses, and starting afresh on this browser.
-async function settingsDialog() {
+// Orientations a researcher can load: the built-in examples, other projects' orientations, and the older per-browser text.
+function orientationSources(s) {
+  return [...ORIENTATIONS.map(o => ({ key:`example:${o.key}`, group:'Examples', label:o.title, text:o.text })),
+    ...state.projects.filter(x => x.id !== p()?.id && x.orientation?.trim()).map(x => ({ key:`project:${x.id}`, group:'Your other projects', label:x.name, text:x.orientation })),
+    ...(s.instructions?.trim() ? [{ key:'browser', group:'Earlier settings', label:'Instructions saved in this browser', text:s.instructions }] : [])];
+}
+function orientationPicker(s) {
+  const groups = Map.groupBy(orientationSources(s), o => o.group);
+  return `<label class="field"><span>Load an existing orientation</span><select id="orientation-preset"><option value="">Choose one to load…</option>${[...groups].map(([group, list]) => `<optgroup label="${e(group)}">${list.map(o => `<option value="${e(o.key)}">${e(o.label)}</option>`).join('')}</optgroup>`).join('')}</select><small>Loads it into the field below, where you can adapt it before saving.</small></label>`;
+}
+function savingHelp() {
+  return `<p class="fine">Althea saves every change automatically in this browser’s storage, on this computer only. Nothing is sent to a server or written back to ATLAS.ti.</p>
+    <p class="fine"><strong>Backup project</strong> (top bar) downloads one <span class="mono">.althea.json</span> file with everything: the original exports, prepared data, codebook, reviews, findings, history and the methodological orientation. Keep it somewhere safe. It contains your quotations, so treat it like the interview data.</p>
+    <p class="fine"><strong>On another computer</strong>, start Althea and choose <strong>Restore a backup</strong>. No database, ATLAS.ti project or original spreadsheets are needed there. Pi must be installed and logged in on that computer for new analyses, and the model and trace settings are chosen again because they belong to the browser.</p>
+    <p class="fine"><strong>Export final files</strong> (Codebook) gives the reviewed quotation list and codebook as spreadsheets. They are for reading and reporting: ATLAS.ti cannot import them back.</p>`;
+}
+async function settingsDialog(focus = '') {
   state.pi = await piAvailable();
   // The default model's provider is listed first, since it is the one pi is logged in to.
   const s = piSettings(), pi = state.pi, first = pi.model?.split('/')[0];
@@ -535,13 +580,62 @@ async function settingsDialog() {
   const analysis = pi.available ? `
     <label class="field"><span>Model</span><select id="settings-model"><option value="">Pi default (${e(pi.model)})</option>${providers.map(([provider, models]) => `<optgroup label="${e(provider)}">${options(models.map(m => [m.id, m.name]), s.model)}</optgroup>`).join('')}</select><small>Only models pi has credentials for are listed. Log in to more providers with pi’s /login.</small></label>
     <label class="field"><span>Thinking</span><select id="settings-thinking"><option value="">Model default${pi.thinking ? ` (${e(pi.thinking)})` : ''}</option>${options(pi.thinkingLevels.map(t => [t, t]), s.thinking)}</select><small>More thinking can give closer readings but takes longer. Ignored by models without reasoning.</small></label>
-    <label class="field"><span>Additional instructions</span><textarea id="settings-instructions" maxlength="${pi.maxInstructions}" rows="6" placeholder="For example: The participants are professional illustrators. Treat AI tools as any generative software, not only chatbots.">${e(s.instructions)}</textarea><small>Added to Althea’s built-in instructions for every analysis on this browser, and recorded with each finding.</small></label>
+    <label class="check-row"><input type="checkbox" id="settings-trace" ${s.showTrace ? 'checked' : ''}><span>Show Pi’s reasoning trace with each finding<small>The model’s reasoning and the tools it used while coding, for interpretability. Traces are recorded either way.</small></span></label>
     <details><summary>Althea’s built-in instructions</summary><p class="fine full-text">${e(pi.instructions)}</p></details>`
     : `<p class="alert warning">Pi is not available${pi.reason ? `: ${e(pi.reason)}` : ''}. Analyses use the labelled simulation. Install pi and log in with /login, then restart Althea.</p>`;
-  openDialog('Settings', `<section class="settings-section"><h3>Researcher</h3><label class="field"><span>Your name</span><input id="settings-reviewer" value="${e(p()?.reviewer || state.reviewer)}" placeholder="Recorded with each decision"></label><p class="fine">Earlier decisions keep the name recorded at the time.</p></section>
+  openDialog('Settings', `<section class="settings-section"><h3>Researcher</h3><label class="field"><span>Your name</span><input id="settings-reviewer" value="${e(p()?.reviewer || state.reviewer)}" placeholder="Recorded with each decision"></label></section>
     <section class="settings-section"><h3>AI analysis</h3>${analysis}</section>
+    <section class="settings-section" id="orientation"><h3>Methodological orientation</h3>${p() ? `${orientationPicker(s)}<label class="field"><span>Orientation for “${e(p().name)}”</span><small>${e(ORIENTATION_HELP)}</small><textarea id="settings-orientation" maxlength="10000" rows="8" placeholder="Empty: Althea uses only its built-in instructions. Write your own, or load an existing orientation above.">${e(p().orientation || '')}</textarea><small>Saved with this project and its backups, added to Althea’s built-in instructions for every analysis, and recorded with each finding.</small></label>` : '<p class="fine">Open or create a project to set its methodological orientation.</p>'}</section>
+    <section class="settings-section"><h3>Saving and moving your work</h3>${savingHelp()}</section>
+    <section class="settings-section"><h3>System check</h3><p class="fine">Checks that the server, browser storage, spreadsheet reader, Pi and your model are working.${lastCheck() ? ` Last passed ${date(lastCheck())}.` : ''}</p>${button('Run system check','system-check','secondary')}</section>
     <section class="settings-section"><h3>Start afresh</h3><p class="fine">Delete every project saved on this browser, with its reviews and history. Your Pi settings stay. Download a backup first if you may need a project again.</p>${button('Delete all projects…','reset-data','danger')}</section>`,
     button('Cancel','close-modal','quiet') + button('Save settings','save-settings','primary'));
+  if (focus) { modal.querySelector('#' + focus)?.scrollIntoView({ block:'start' }); modal.querySelector('#settings-orientation')?.focus({ preventScroll:true }); }
+}
+// System check: runs on first launch and from Settings, so problems show before a project depends on them.
+const CHECK_KEY = 'althea-system-check';
+function lastCheck() { try { return localStorage.getItem(CHECK_KEY) || ''; } catch { return ''; } }
+async function systemCheck() {
+  const rows = [], token = Symbol();
+  state.checkToken = token;
+  openDialog('System check', '<p class="fine">Althea checks that everything it needs works on this computer. The model test sends one short prompt to your model provider.</p><ul class="check-list" id="check-list"></ul>', button('Run again','system-check','quiet') + button('Done','close-modal','primary'));
+  const draw = () => { const list = modal.querySelector('#check-list'); if (list && state.checkToken === token) list.innerHTML = rows.map(r => `<li class="check-${r.state}"><span class="check-icon">${r.state === 'ok' ? icon('check') : r.state === 'fail' ? icon('close') : '<span class="spinner small"></span>'}</span><span><strong>${e(r.label)}</strong><span class="fine">${e(r.detail || 'Checking…')}</span>${r.state === 'fail' && r.fix ? `<span class="fine check-fix">${e(r.fix)}</span>` : ''}</span></li>`).join(''); };
+  const set = (id, label, patch = {}) => { const row = rows.find(r => r.id === id); if (row) Object.assign(row, patch); else rows.push({ id, label, state:'run', ...patch }); draw(); };
+  const check = async (id, label, run, fix) => { set(id, label); try { set(id, label, { state:'ok', detail:await run() }); return true; } catch (error) { set(id, label, { state:'fail', detail:error.message, fix }); return false; } };
+  await check('storage', 'Browser storage', async () => { await storageWorks(); localStorage.setItem(CHECK_KEY + '-test', '1'); localStorage.removeItem(CHECK_KEY + '-test'); return 'Projects and settings can be saved in this browser.'; }, 'Allow site data for this address and avoid private windows, or your work is lost when the tab closes.');
+  await check('reader', 'Spreadsheet reader', async () => { await import('../vendor/xlsx.mjs'); const r = await fetch('/samples/quotations.xlsx', { method:'HEAD' }).catch(() => ({ ok:false })); if (!r.ok) throw new Error('The example exports could not be loaded.'); return 'XLSX and CSV exports can be read; the example project is available.'; }, 'Check that the Althea server is running, then reload the page.');
+  let server = [];
+  const reached = await check('server', 'Althea server', async () => {
+    const r = await fetch('/api/checkup').catch(() => { throw new Error('The Althea server could not be reached.'); });
+    if (r.status === 404) throw new Error('This Althea server is out of date.');
+    if (!r.ok) throw new Error(`The server answered ${r.status}.`);
+    server = (await r.json()).checks; return 'Running on this computer.';
+  }, 'Start Althea again with npm start in the project folder.');
+  for (const c of server) set(c.id, c.label, { state:c.ok ? 'ok' : 'fail', detail:c.detail, fix:c.fix });
+  const loggedIn = reached && server.find(c => c.id === 'login')?.ok;
+  const model = loggedIn ? await check('model', 'Model test', async () => {
+    const s = piSettings(), r = await fetch('/api/checkup/model', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ options:{ model:s.model, thinking:s.thinking } }) });
+    const body = await r.json().catch(() => ({})); if (!r.ok) throw new Error(body.error || `The model test failed (${r.status}).`);
+    return `${body.model} replied in ${(body.ms / 1000).toFixed(1)} s.`;
+  }, 'Choose another model in Settings, or log in again with pi’s /login.') : (set('model', 'Model test', { state:'fail', detail:'Skipped: Pi is not ready.', fix:'Fix the Pi checks above, then run the check again.' }), false);
+  if (state.checkToken !== token) return;
+  const passed = rows.every(r => r.state === 'ok');
+  if (passed) { try { localStorage.setItem(CHECK_KEY, new Date().toISOString()); } catch {} }
+  const list = modal.querySelector('#check-list');
+  if (list) list.insertAdjacentHTML('afterend', passed ? '<p class="success-line">' + icon('check') + ' Everything works. You can start a project.</p>' : `<p class="alert ${model === false && rows.filter(r => r.state === 'fail').every(r => ['model','sdk','login'].includes(r.id)) ? 'warning' : 'error'}">Some checks failed. Follow the hints above, then run the check again.${rows.some(r => r.state === 'fail' && ['model','sdk','login'].includes(r.id)) ? ' Without Pi you can still import, prepare and review manually.' : ''}</p>`);
+}
+// Shown once after a project is created, since the orientation should be settled before the first analysis.
+function orientationPrompt() {
+  p().ui.orientationAsked = true; persist();
+  openDialog('Set a methodological orientation?', `<p>Althea can follow the methodological assumptions of your study, for example your epistemology, ontology and how evidence and alternative readings should be treated.</p><p class="fine">${e(ORIENTATION_HELP)}</p><p class="fine">You can start from an example, such as a constructivist orientation, and change it any time in Settings.</p>`,
+    button('Not now','close-modal','quiet') + button('Set orientation','open-orientation','primary'));
+}
+function exportDialog() {
+  const rows = [['download-quotations','Quotation list','XLSX','Every quotation still in the dataset with its final codes, plus the quotations you uncoded on a separate sheet.'],
+    ['download-codebook','Codebook','XLSX','Active codes with definitions, boundaries and quotation counts, plus retired and merged codes.'],
+    ['export-history','Decision history','CSV','Every decision with its evidence, rationale, researcher and time.'],
+    ['export-assignments','Quotation per code','CSV','One row per code–quotation pair, as on the Prepare screen.']];
+  openDialog('Export final files', `<p class="fine">The files reflect the working project now. The original exports stay unchanged. ATLAS.ti cannot import these files back; use the decision history to apply changes there.</p><div class="export-list">${rows.map(([action,title,type,text]) => `<div class="export-row"><span><strong>${title}</strong> <small class="mono">${type}</small><span class="fine">${text}</span></span>${button(icon('download') + ' Download',action,'secondary')}</div>`).join('')}</div>`, button('Done','close-modal','primary'));
 }
 function restoreDialog() { openDialog('Restore a project backup', '<p>Choose an Althea JSON backup. It will be restored as a separate project so existing work is preserved.</p><label class="file-drop">' + icon('upload') + '<strong>Choose a project backup</strong><input type="file" id="backup-upload" accept=".json" aria-label="Project backup"></label>'); }
 function viewFor(project) { const view = { overview:'scope', data:'prepare' }[project.ui.view] || project.ui.view; return VIEWS.includes(view) && !(['scope','review','confirm'].includes(view) && !isPrepared(project)) ? view : isPrepared(project) ? 'scope' : 'prepare'; }
@@ -552,7 +646,7 @@ async function decide(resolution) {
   const d = draft(); decisionReady(d);
   const result = commitDecision(p(),previewDecision(p(),d,resolution));
   await persist(true); render();
-  toast(resolution === 'defer' ? 'Deferred. The data is unchanged; reopen it from the deferred list.' : `${result.status}. The data is unchanged and the reason is kept in the history.`);
+  toast(resolution === 'defer' ? 'Deferred. The data is unchanged; reopen it from the deferred list.' : `${result.status}. The data is unchanged and the decision is kept in the history.`);
 }
 async function handleAction(action, node) {
   switch (action) {
@@ -562,7 +656,7 @@ async function handleAction(action, node) {
     case 'create-project': {
       const reason = createReady(); if (reason) throw new Error(reason);
       state.project = createProject(state.importName,state.imports,state.prepared,state.reviewer,state.grouped); state.view = 'prepare'; state.project.ui.view = 'prepare';
-      await persist(true); render(false); toast('Project created. Inspect the issues, then prepare the data.'); break;
+      await persist(true); render(false); toast('Project created. Inspect the issues, then prepare the data.'); if (!state.project.orientation) orientationPrompt(); break;
     }
     case 'prepare-data': prepareProject(p()); await persist(true); render(); toast('Data prepared. The raw exports are unchanged.'); break;
     case 'accept-issues': for (const g of issueRows()) if (g.status === 'Open') p().preparation.issueStatus[g.key] = 'Accepted'; persist(); render(); break;
@@ -578,10 +672,16 @@ async function handleAction(action, node) {
     case 'projects': openDialog('Your saved projects',state.projects.length ? `<div class="project-list">${state.projects.map(project => `<div class="project-row">${projectCard(project)}${button('Delete','delete-project','danger',`data-id="${e(project.id)}" aria-label="Delete project ${e(project.name)}"`)}</div>`).join('')}</div>` : '<p>No saved projects yet.</p>',button('Restore backup','restore') + button('New project','new-project','primary')); break;
     case 'resume': if (p()) await persist(true); state.project = structuredClone(state.projects.find(project => project.id === node.dataset.id)); state.view = viewFor(state.project); state.reviewer = state.project.reviewer; state.error = ''; setSaveStatus('Saved on this browser'); modal.close(); render(false); break;
     case 'reviewer': await settingsDialog(); break;
+    case 'open-orientation': await settingsDialog('orientation'); break;
+    case 'system-check': await systemCheck(); break;
+    case 'export-files': exportDialog(); break;
+    case 'download-quotations': download(`${p().name.replace(/[^a-z0-9_-]/gi,'-')}_quotations.xlsx`,await workbook(finalQuotationSheets(p())),'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); break;
+    case 'download-codebook': download(`${p().name.replace(/[^a-z0-9_-]/gi,'-')}_codebook.xlsx`,await workbook(finalCodebookSheets(p())),'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); break;
     case 'save-settings': {
       state.reviewer = document.querySelector('#settings-reviewer').value.trim(); if (p()) { p().reviewer = state.reviewer; persist(); }
       const value = selector => document.querySelector(selector)?.value ?? '';
-      const saved = !state.pi.available || savePiSettings({ model:value('#settings-model'), thinking:value('#settings-thinking'), instructions:value('#settings-instructions').trim() });
+      const orientation = document.querySelector('#settings-orientation'); if (p() && orientation) { p().orientation = orientation.value.trim(); persist(); }
+      const saved = !state.pi.available || savePiSettings({ model:value('#settings-model'), thinking:value('#settings-thinking'), showTrace:!!document.querySelector('#settings-trace')?.checked });
       modal.close(); render(); toast(saved ? 'Settings saved.' : 'Your name is saved, but this browser blocked saving the Pi settings.'); break;
     }
     case 'delete-project': {
@@ -630,7 +730,7 @@ async function handleAction(action, node) {
     case 'split-page': splitDialog(Number(node.dataset.page)); break;
     case 'close-modal': captureScroll(); modal.close(); render(); break;
     case 'open-navigation': openDialog('Workspace',document.querySelector('.sidebar').innerHTML); modal.classList.add('navigation-dialog'); break;
-    case 'backup': backup(); break;
+    case 'backup': backup(); toast('Backup downloaded. Restore it with “Restore a backup” here or on another computer.'); break;
     case 'restore': restoreDialog(); break;
     case 'download-source': { const file = p().imports[node.dataset.kind]; download(file.name,Uint8Array.from(atob(file.bytes),c => c.charCodeAt(0)),'application/octet-stream'); break; }
     case 'export-assignments': { const qs = new Map(p().quotations.map(q => [q.id,q])), cs = new Map(p().codes.map(c => [c.id,c])); download('quotation_per_code.csv',csv(['quotation_id','text','code','source','coder','created','note','flag','review_status'],p().assignments.map(a => { const q = qs.get(a.quotationId), c = cs.get(a.codeId); return [q.quotationId,q.text,c.label,q.source,q.coder,q.created,[q.note,c.importedComment].filter(Boolean).join('\n'),a.flag || '',codeStatus(c.id)]; })),'text/csv;charset=utf-8'); break; }
@@ -661,6 +761,11 @@ document.addEventListener('change', async event => {
     if (node.dataset.file && node.files[0]) await loadFile(node.files[0],node.dataset.file);
     if (node.id === 'backup-upload' && node.files[0]) await restoreFile(node.files[0]);
     if (node.id === 'group-duplicates') { state.grouped = node.checked; render(); }
+    if (node.id === 'orientation-preset' && node.value) {
+      const source = orientationSources(piSettings()).find(o => o.key === node.value), field = document.querySelector('#settings-orientation');
+      if (source && (!field.value.trim() || confirm(`Replace the text in the field with “${source.label}”?`))) { field.value = source.text; field.focus(); toast(`Loaded “${source.label}”. Adapt it, then save the settings.`); }
+      node.value = '';
+    }
     if (node.dataset.issue) { p().preparation.issueStatus[node.dataset.issue] = node.value; persist(); render(); }
     if (node.name === 'fn') { cancelAnalysis(); p().ui.module = node.value; persist(); render(); }
     if (node.id === 'scope-code') { cancelAnalysis(); p().ui.codeId = node.value; setFilter('evidenceSearch',''); setFilter('evidenceClass',''); setFilter('evidenceAll',false); render(); }
@@ -681,3 +786,5 @@ try { state.projects = await allProjects(); if (state.projects.length) { state.p
 catch(error) { state.error = 'Browser storage is unavailable. You can still work and download project backups. ' + error.message; }
 render(false);
 piAvailable().then(status => { state.pi = status; });
+// A fresh install (no projects, never passed) runs the system check straight away.
+if (!state.projects.length && !lastCheck()) systemCheck();

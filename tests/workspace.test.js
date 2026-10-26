@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { readExport, prepareImports, groupIssues, ISSUE_HELP, guessMapping, parseCsv, csv } from '../src/data.js';
-import { createProject, prepareProject, isPrepared, emptyDraft, previewDecision, commitDecision, reopenSuggestion, deferredSuggestions, moveQuotation, canTransition, statusLabel, validateBackup, quotesFor, countWords, draftKey } from '../src/model.js';
+import { createProject, prepareProject, isPrepared, emptyDraft, previewDecision, commitDecision, reopenSuggestion, deferredSuggestions, moveQuotation, uncodeQuotation, finalQuotationSheets, finalCodebookSheets, canTransition, statusLabel, validateBackup, quotesFor, countWords, draftKey } from '../src/model.js';
 import { exampleProvider } from '../src/analysis.js';
 import { verificationProvider, simulationProviders } from '../src/verification.js';
 import { saveReview } from '../src/model.js';
@@ -54,13 +54,13 @@ function project() { const source = imports(); return createProject('Test projec
 function draft(p, module='coherence', ids=['c1']) { return {...emptyDraft(p,module,ids),assessment:'Moderate',overlap:4,rationale:'The selected quotations support this decision.',evidenceIds:['q2']}; }
 const bytes = text => new TextEncoder().encode(text);
 
-test('the mockup training exports reconcile, keep original bytes, and support every simulated function', async () => {
-  const qBytes = new Uint8Array(await readFile(new URL('../Training Data - Quotation Manager.xlsx',import.meta.url)));
-  const cBytes = new Uint8Array(await readFile(new URL('../Training Data - Code Manager.xlsx',import.meta.url)));
+test('the example exports reconcile, keep original bytes, and support every simulated function', async () => {
+  const qBytes = new Uint8Array(await readFile(new URL('../Example Data - Quotation Manager.xlsx',import.meta.url)));
+  const cBytes = new Uint8Array(await readFile(new URL('../Example Data - Code Manager.xlsx',import.meta.url)));
   const quotation = await readExport(qBytes,'Quotation Manager.xlsx','quotation');
   const codes = await readExport(cBytes,'Code Manager.xlsx','codes');
   const result = prepareImports({quotation,codes});
-  assert.deepEqual(result.summary,{quotations:189,codes:10,codeRows:10,sources:94,assignments:203,multiCode:13,duplicateGroups:0,unusedCodes:0});
+  assert.deepEqual(result.summary,{quotations:160,codes:10,codeRows:10,sources:92,assignments:174,multiCode:13,duplicateGroups:0,unusedCodes:0});
   assert.equal(result.issues.filter(i => i.severity === 'error').length,0);
   assert.equal(result.issues.filter(i => i.type === 'Blank Codes field').length,0);
   // The corrected exports agree: every code's Groundedness matches its assignments in the Quotation Manager.
@@ -69,12 +69,12 @@ test('the mockup training exports reconcile, keep original bytes, and support ev
   assert(result.quotations.every(q => q.coder === 'Jane Doe'));
   assert.equal(Buffer.from(quotation.bytes,'base64').compare(qBytes),0);
   assert.equal(result.quotations[0].created,'2026-08-13 16:38:43');
-  assert.equal(quotation.metadata.Project,'Mockup-Training Data');
+  assert.equal(quotation.metadata.Project,'Example Data');
   assert(result.codes.every(c => !c.parentId));
   const p = createProject('Sample',{quotation,codes},result,'Reviewer',false);
   assert.equal(isPrepared(p),false);
   prepareProject(p);
-  assert.equal(validateBackup(JSON.parse(JSON.stringify(p))).quotations.length,189);
+  assert.equal(validateBackup(JSON.parse(JSON.stringify(p))).quotations.length,160);
   const before = JSON.stringify(p);
   for (const code of p.codes) for (const [module,provider] of Object.entries(simulationProviders)) {
     const finding = await provider.analyze({module,codeIds:[code.id],project:p});
@@ -159,7 +159,7 @@ test('keep, reject, defer, and note record without altering working coding', () 
     assert.equal(p.reviews.length,1);
   }
 });
-test('all four modules can complete and invalid evidence, reviewer, or rationale is rejected', () => {
+test('all four modules can complete and invalid evidence or reviewer is rejected', () => {
   for (const module of ['coherence','verification','definition','comparison']) {
     const p = project(); const ids = module === 'comparison' ? ['c1','c3'] : ['c1'];
     const d = {...draft(p,module,ids),core:'Personal creative voice.',boundary:'Include personal style; exclude efficiency alone.',explanation:'Voice concerns identity, expression concerns the act of creation.',action:module === 'definition' ? 'definition' : 'keep'};
@@ -168,7 +168,6 @@ test('all four modules can complete and invalid evidence, reviewer, or rationale
   }
   const p = project();
   assert.throws(() => previewDecision(p,{...draft(p),evidenceIds:['q4']}),/no longer belongs/);
-  assert.throws(() => previewDecision(p,{...draft(p),rationale:''}),/rationale/);
   p.reviewer = ''; assert.throws(() => previewDecision(p,draft(p)),/reviewer/);
 });
 test('definition requires both parts and enforces the word limit', () => {
@@ -357,15 +356,58 @@ test('every issue the import can raise comes with an explanation', async () => {
   assert(types.length > 15);
   for (const type of types) assert(ISSUE_HELP[type], `No explanation for ${type}`);
 });
-test('deferring needs no rationale, but approving and rejecting still do', () => {
+test('a rationale is optional for every decision', () => {
   const p = project(), d = {...draft(p),rationale:''};
   commitDecision(p,previewDecision(p,d,'defer'));
   assert.equal(p.history[0].status,'Deferred');
   assert.equal(p.history[0].rationale,'');
   assert.equal(validateBackup(JSON.parse(JSON.stringify(p))).history.length,1);
-  const q = project();
-  assert.throws(() => previewDecision(q,{...draft(q),rationale:''},'reject'),/rationale/);
-  assert.throws(() => previewDecision(q,{...draft(q),rationale:''},'approve'),/rationale/);
+  for (const resolution of ['reject','approve']) { const q = project(); commitDecision(q,previewDecision(q,{...draft(q),rationale:''},resolution)); assert.equal(q.history[0].rationale,''); }
+});
+test('uncoding removes every code from a quotation, takes it out of the dataset, and keeps the record', () => {
+  const p = project(), d = draft(p,'verification'), originals = JSON.stringify([p.imports,p.original]);
+  const { removed } = uncodeQuotation(p,d,'q2');
+  assert.deepEqual(removed.map(a => a.codeId).sort(),['c1','c3']);
+  assert(!p.assignments.some(a => a.quotationId === 'q2'));
+  assert.equal(p.quotations.find(q => q.id === 'q2').excluded,true);
+  assert.equal(p.history.at(-1).action,'uncode');
+  assert.deepEqual(p.history.at(-1).affectedCodeIds.sort(),['c1','c3']);
+  assert.equal(JSON.stringify([p.imports,p.original]),originals);
+  assert.throws(() => uncodeQuotation(p,d,'q2'),/no longer in the dataset/);
+  assert.equal(validateBackup(JSON.parse(JSON.stringify(p))).quotations.length,3);
+  const [[, quotations],[, removedRows]] = finalQuotationSheets(p);
+  assert.deepEqual(quotations.slice(1).map(r => r[0]),['1:2','2:1']);
+  assert.deepEqual(removedRows.slice(1).map(r => r[0]),['1:1']);
+});
+test('the final codebook export lists active codes with counts and keeps retired ones apart', () => {
+  const p = project();
+  commitDecision(p,previewDecision(p,{...draft(p),action:'retire'}));
+  const [[, active],[, inactive]] = finalCodebookSheets(p);
+  assert.deepEqual(active[0].slice(0,6),['Code','Parent','Core concept','Boundary rule','Comment (imported)','Groundedness']);
+  assert.deepEqual(active.slice(1).map(r => [r[0],r[5]]),[['Expression',2],['Voice: Style',0]]);
+  assert.deepEqual(inactive.slice(1).map(r => r[0]),['Voice']);
+  const [[, quotations]] = finalQuotationSheets(p);
+  assert.equal(quotations.find(r => r[0] === '1:1')[3],'Expression');
+});
+test('the reasoning trace keeps reasoning and tool use but not the prompts, finding or justification', async () => {
+  const { traceOf } = await import('../agent/pi-analyst.mjs');
+  const trace = traceOf([
+    { role:'user', content:'The prompt with every quotation' },
+    { role:'assistant', content:[{ type:'thinking', thinking:'Compare 1:1 with the label.' },{ type:'thinking', thinking:'', redacted:true },{ type:'toolCall', name:'search_quotations', arguments:{ query:'voice' } }] },
+    { role:'toolResult', toolName:'search_quotations', content:[{ type:'text', text:'[q1] (1:1) My own voice' }], isError:false },
+    { role:'assistant', content:[{ type:'text', text:'Submitting.' },{ type:'toolCall', name:'submit_finding', arguments:{ title:'Long finding' } }] },
+    { role:'toolResult', toolName:'submit_finding', content:[{ type:'text', text:'Recorded.' }] },
+    { role:'user', content:'Explain how you reached it' },
+    { role:'assistant', content:[{ type:'toolCall', name:'explain_finding', arguments:{ reasoning:'Long justification' } }] },
+    { role:'toolResult', toolName:'explain_finding', content:[{ type:'text', text:'Recorded.' }] },
+  ]);
+  assert.deepEqual(trace.map(t => t.kind),['thinking','thinking','tool','result','text','tool','tool']);
+  assert.equal(trace[6].text,'');
+  assert.equal(trace[0].redacted,undefined);
+  assert.equal(trace[1].redacted,true);
+  assert.equal(trace[2].text,'{"query":"voice"}');
+  assert.equal(trace[5].text,'');
+  assert(!/The prompt|Explain how|Long/.test(JSON.stringify(trace)));
 });
 test('quotations can move to a new code; quotations given the same new name share one code', () => {
   const p = project(), d = {...draft(p,'verification'),action:'recode',evidenceIds:['q2','q3'],

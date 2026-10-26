@@ -9,16 +9,18 @@ export function piPayload(project, codeIds) {
   return {
     code: pick(code, ['id', 'label', 'parentLabel', 'definition', 'boundary', 'importedComment']),
     codes: project.codes.filter(c => c.active).map(c => pick(c, ['id', 'label', 'definition', 'importedComment'])),
-    quotations: project.quotations.map(q => pick(q, ['id', 'quotationId', 'text', 'source'])),
+    // Uncoded quotations are out of the dataset, so the agent cannot find them through search either.
+    quotations: project.quotations.filter(q => !q.excluded).map(q => pick(q, ['id', 'quotationId', 'text', 'source'])),
     assignments: project.assignments.map(a => pick(a, ['quotationId', 'codeId'])),
   };
 }
 
-// The researcher's Pi settings belong to this browser, like a preference; each finding records what it used.
+// Model, thinking and showing traces belong to this browser, like preferences; the methodological orientation
+// belongs to the project (project.orientation). `instructions` is the older per-browser field, offered once as a starting point.
 const SETTINGS_KEY = 'althea-pi-settings';
 export function piSettings() {
-  try { const s = JSON.parse(localStorage.getItem(SETTINGS_KEY)); return { model: s?.model || '', thinking: s?.thinking || '', instructions: s?.instructions || '' }; }
-  catch { return { model: '', thinking: '', instructions: '' }; }
+  try { const s = JSON.parse(localStorage.getItem(SETTINGS_KEY)); return { model: s?.model || '', thinking: s?.thinking || '', showTrace: !!s?.showTrace, instructions: s?.instructions || '' }; }
+  catch { return { model: '', thinking: '', showTrace: false, instructions: '' }; }
 }
 export function savePiSettings(settings) {
   try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); return true; } catch { return false; }
@@ -33,7 +35,7 @@ export async function piAvailable() {
 export const piProvider = {
   async analyze({ module, codeIds, project, signal }) {
     signal?.throwIfAborted();
-    const response = await fetch('/api/analyze', { method: 'POST', signal, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ module, payload: piPayload(project, codeIds), options: piSettings() }) });
+    const response = await fetch('/api/analyze', { method: 'POST', signal, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ module, payload: piPayload(project, codeIds), options: { model: piSettings().model, thinking: piSettings().thinking, instructions: project.orientation || '' } }) });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(body.error || `Pi request failed (${response.status})`);
     return { ...body.finding, projectRevision: project.revision };

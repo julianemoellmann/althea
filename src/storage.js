@@ -42,3 +42,13 @@ export async function allProjects() {
     request.onerror = () => reject(request.error);
   });
 }
+// System check: writes and removes a record in one transaction, so it never shows up as a project.
+export async function storageWorks() {
+  const db = await database();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction('projects', 'readwrite'), store = transaction.objectStore('projects');
+    store.put({ id: '__checkup__', updatedAt: '' }); store.delete('__checkup__');
+    transaction.oncomplete = () => resolve(true);
+    transaction.onerror = transaction.onabort = () => reject(transaction.error || new Error('The browser refused to save data.'));
+  });
+}

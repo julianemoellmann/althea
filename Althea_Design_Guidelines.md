@@ -78,13 +78,15 @@ The selected scope and compatible functions remain visible before and during ana
 
 ### Single-code functionality icon assets
 
-Use these approved tag-based line icons when presenting the three single-code analytical functions. Use the light variant on Ink Navy or other dark surfaces; use the dark variant on Soft White or other light surfaces. Pair every icon with its visible function name; the icon does not replace the accessible label.
+Use these tag-based line icons when presenting the three single-code analytical functions. Pair every icon with its visible function name; the icon does not replace the accessible label.
 
-| Functionality | Light icon for dark surfaces | Dark icon for light surfaces |
-|---|---|---|
-| Internal Code Coherence | [Icon-Internal Code Coherence_light.png](./althea/Assets/Icon-Internal%20Code%20Coherence_light.png) | [Icon-Internal Code Coherence_dark.png](./althea/Assets/Icon-Internal%20Code%20Coherence_dark.png) |
-| Verifying Coding | [Icon-Verifying Coding_light.png](./althea/Assets/Icon-Verifying%20Coding_light.png) | [Icon-Verifying Coding_dark.png](./althea/Assets/Icon-Verifying%20Coding_dark.png) |
-| Creating Code Definitions | [Icon-Creating Code Definitions_light.png](./althea/Assets/Icon-Creating%20Code%20Definitions_light.png) | [Icon-Creating Code Definitions_dark.png](./althea/Assets/Icon-Creating%20Code%20Definitions_dark.png) |
+Each icon is a single 96 px PNG alpha mask, applied with CSS `mask` so that it takes the colour of the surrounding text: Soft White on Ink Navy, Ink Navy on light surfaces. Do not add separate light and dark files.
+
+| Functionality | Icon |
+|---|---|
+| Internal Code Coherence | [internal-code-coherence.png](./Assets/icons/internal-code-coherence.png) |
+| Verifying Coding | [verifying-coding.png](./Assets/icons/verifying-coding.png) |
+| Creating Code Definitions | [creating-code-definitions.png](./Assets/icons/creating-code-definitions.png) |
 
 ## Data and safety rules affecting design
 
@@ -298,13 +300,16 @@ The assets below are the current visual authority for the Althea logo system.
 
 | Asset | Approved use |
 |---|---|
-| [Primary horizontal lockup](./althea/Assets/Althea%20logo.png) | Product headers, documentation, screenshots, and formal communication. |
-| [Primary symbol artwork](./althea/Assets/Althea%20logo_visual.png) | Symbol-only mark reference for compact product contexts. |
-| [Logo variations](./althea/Assets/Althea%20logo_variations.png) | Dark monochrome, light reverse, one-colour, and symbol-only variants. |
-| [Favicon](./althea/Assets/Althea_favicon.png) | Browser favicon and compact application icon reference. |
-| [Logo overview](./althea/Assets/Althea_logo%20explanations_1.png) | Lockup and symbol-only usage reference. |
-| [Approved variants](./althea/Assets/Althea_logo%20explanations_2.png) | Approved colour and favicon variants. |
-| [Usage and clear-space rules](./althea/Assets/Althea_logo%20explanations_3.png) | Clear space, minimum sizes, permitted and prohibited use. |
+| [Symbol mark (SVG)](./Assets/althea-mark.svg) | Source of the framed-passage symbol: Ink Navy bracket, Slate Blue passage. Also inlined in the app. |
+| [Favicon (SVG)](./Assets/favicon.svg), [32 px](./Assets/favicon-32.png), [180 px touch icon](./Assets/apple-touch-icon.png) | Browser favicon and compact application icon. |
+| [Horizontal lockup](./Assets/brand/althea-logo.jpg) | Reference for documentation, screenshots, and formal communication. |
+| [Symbol artwork](./Assets/brand/althea-logo-visual.jpg) | Reference for the symbol-only mark. |
+| [Logo variations](./Assets/brand/althea-logo-variations.jpg) | Dark monochrome, light reverse, one-colour, and symbol-only variants. |
+| [Logo overview](./Assets/brand/althea-logo-explanations-1.jpg) | Lockup and symbol-only usage reference. |
+| [Approved variants](./Assets/brand/althea-logo-explanations-2.jpg) | Approved colour and favicon variants. |
+| [Usage and clear-space rules](./Assets/brand/althea-logo-explanations-3.jpg) | Clear space, minimum sizes, permitted and prohibited use. |
+
+In the app, the sidebar uses the light version of the mark on Ink Navy: Soft White bracket and a light Slate Blue passage (`#8FA5B8`), with the wordmark set in Montserrat 600.
 
 - Use the horizontal lockup whenever space allows; use the symbol-only mark in sidebars, compact navigation, loading indicators, and favicons.
 - Preserve clear space equal to the internal framed-passage unit `X` of the symbol mark on every side.
@@ -401,26 +406,25 @@ Approved and Implemented are separate states. Approved means the researcher acce
 
 ## Typography
 
-Althea uses a deliberate editorial pairing:
+Althea uses one sans-serif family for everything people read, plus a monospace face for literal values:
 
-- Montserrat for titles, headings, data labels, navigation, and controls.
-- Merriweather for sustained reading: quotations, analytical notes, instructions, and prose.
-- Roboto Mono for literal technical content, identifiers, timestamps, filenames, code, and fixed-width data.
+- Montserrat for titles, headings, navigation, controls, data labels, body text, quotations, analytical notes, and instructions.
+- Roboto Mono for literal technical content: identifiers, timestamps, filenames, code, and fixed-width data.
 
-Montserrat provides navigational clarity. Merriweather gives quotations and analytical reasoning a readable scholarly character. Roboto Mono preserves precision where exact values matter.
+Serif typefaces are not used. One family keeps the interface consistent; hierarchy comes from size, weight, spacing, and colour rather than from a change of typeface.
 
 ### Font families and fallbacks
 
 ```css
 :root {
   --font-title: "Montserrat", Arial, Helvetica, sans-serif;
-  --font-body: "Merriweather", Georgia, "Times New Roman", serif;
+  --font-body: "Montserrat", Arial, Helvetica, sans-serif;
   --font-mono: "Roboto Mono", "SFMono-Regular", Consolas,
     "Liberation Mono", monospace;
 }
 ```
 
-Use Merriweather Regular 400 as the default body face. Do not use Roboto Mono for long-form reading. Do not use synthetic bold or italic styles.
+`--font-body` stays a separate token so the body face can change in one place. Use Montserrat Regular 400 as the default body weight. Do not use Roboto Mono for long-form reading. Do not use synthetic bold or italic styles.
 
 ### Type roles
 
@@ -431,13 +435,13 @@ Use Merriweather Regular 400 as the default body face. Do not use Roboto Mono fo
 | Display text | Montserrat | 600 or 700 | 48–64 px; rare introductory use only. |
 | Navigation and controls | Montserrat | 500 or 600 | Clear, compact, and readable at small sizes. |
 | Data labels and status labels | Montserrat | 500 or 600 | 12–14 px; sentence case; never the sole carrier of essential meaning. |
-| Body text | Merriweather | 400 | 16–18 px; 1.45–1.65 line height. |
-| Quotation text | Merriweather | 400 | Comfortable reading measure, clear boundaries, and adequate context. |
-| Emphasis | Merriweather | 700 | Semantic emphasis, short labels, or brief callouts only. |
-| Captions and citations | Merriweather | 400 italic | Source citations, editorial qualification, and secondary notes. |
-| Strong editorial emphasis | Merriweather | 900 | Rare short pull quotes or high-impact editorial content; never long passages. |
-| Tables and numeric data | Merriweather or Roboto Mono | 400 or 700 | Use tabular figures where values must align. |
-| Code and literal values | Roboto Mono | 400 or 500 | IDs, filenames, timestamps, technical identifiers, and code. |
+| Body text | Montserrat | 400 | 15–17 px; 1.5–1.65 line height. |
+| Quotation text | Montserrat | 400 | Comfortable reading measure (about 70 characters), clear boundaries, and adequate context. |
+| Emphasis | Montserrat | 600 | Semantic emphasis, short labels, or brief callouts only. |
+| Captions and citations | Montserrat | 400 | Smaller size and muted colour rather than italics. |
+| Fine print and helper text | Montserrat | 400 or 500 | 10–13 px, muted colour; keep it short and only where it changes what the researcher does. |
+| Tables and numeric data | Montserrat or Roboto Mono | 400 or 600 | Use tabular figures where values must align. |
+| Code and literal values | Roboto Mono | 400 | IDs, filenames, timestamps, technical identifiers, and code. |
 
 ### Numeric typography
 
@@ -457,22 +461,21 @@ If the export environment cannot guarantee tabular-number support, use Roboto Mo
 
 ### Font implementation
 
-Self-host approved WOFF2 files. Do not rely on locally installed fonts. Load these static font files:
+Self-host the WOFF2 files in `vendor/fonts`. Do not rely on locally installed fonts or font CDNs. Load these static font files (Latin subset):
 
-- Merriweather Regular 400
-- Merriweather Bold 700
-- Merriweather Italic 400
+- Montserrat Regular 400
+- Montserrat Medium 500
 - Montserrat SemiBold 600
 - Montserrat Bold 700
 - Roboto Mono Regular 400
 
-Preload Merriweather Regular and Montserrat SemiBold. Use `font-display: swap` for standard web content. For PDF generation and pixel-sensitive slide captures, wait for fonts to load before rendering and embed fonts in PDFs where supported.
+Preload Montserrat Regular and Montserrat SemiBold. Use `font-display: swap` for standard web content. For PDF generation and pixel-sensitive slide captures, wait for fonts to load before rendering and embed fonts in PDFs where supported.
 
 ```js
 await document.fonts.ready;
 ```
 
-Use the same font files and rendering environment in development, preview, screenshots, PDF export, and slide capture. Retain licence and copyright notices for the exact self-hosted font files.
+Use the same font files and rendering environment in development, preview, screenshots, PDF export, and slide capture. Retain licence and copyright notices for the exact self-hosted font files (`vendor/fonts/*-LICENSE.txt`).
 
 ## Global shell and layout
 
@@ -488,15 +491,15 @@ Use a stable global shell across all product areas:
 
 ### Sidebar icon assets
 
-Use the light icon set on the Ink Navy sidebar. Use the dark icon set only on Soft White or other light surfaces. Do not recolour, invert, or substitute the supplied icons.
+The sidebar uses the same alpha-mask icons as the function cards, coloured by CSS. Do not invert or substitute them.
 
-| Navigation item | Light icon for Ink Navy sidebar | Dark icon for light surfaces |
-|---|---|---|
-| Overview | [Icon-Overview_light.png](./althea/Assets/Icon-Overview_light.png) | [Icon-Overview_dark.png](./althea/Assets/Icon-Overview_dark.png) |
-| Data | [Icon-Data_light.png](./althea/Assets/Icon-Data_light.png) | [Icon-Data_dark.png](./althea/Assets/Icon-Data_dark.png) |
-| Codebook | [Icon-Codebook_light.png](./althea/Assets/Icon-Codebook_light.png) | [Icon-Codebook_dark.png](./althea/Assets/Icon-Codebook_dark.png) |
-| Review | [Icon-Review_light.png](./althea/Assets/Icon-Review_light.png) | [Icon-Review_dark.png](./althea/Assets/Icon-Review_dark.png) |
-| History | [Icon-History_light.png](./althea/Assets/Icon-History_light.png) | [Icon-History_dark.png](./althea/Assets/Icon-History_dark.png) |
+| Navigation item | Icon |
+|---|---|
+| Codebook | [codebook.png](./Assets/icons/codebook.png) |
+| History | [history.png](./Assets/icons/history.png) |
+| Overview (reserved) | [overview.png](./Assets/icons/overview.png) |
+| Data (reserved) | [data.png](./Assets/icons/data.png) |
+| Review (reserved) | [review.png](./Assets/icons/review.png) |
 
 When a visible navigation label accompanies an icon, treat the icon as decorative for assistive technologies. In the collapsed icon rail, each icon control requires the corresponding accessible name and visible tooltip on focus or hover.
 
@@ -817,3 +820,5 @@ Do not resolve these through design assumption:
 | 2026-09-29 | Linked the approved logo asset pack and incorporated its usage, clear-space, and minimum-size rules. |
 | 2026-09-29 | Linked approved light and dark sidebar-navigation icon assets. |
 | 2026-09-30 | Linked approved light and dark assets for the three single-code functionality icons. |
+| 2026-10-26 | Standardised typography on Montserrat (plus Roboto Mono for literal values); removed Merriweather and all serif faces. Renamed the document to Althea_Design_Guidelines.md. |
+| 2026-10-26 | Replaced the logo and icon PNGs with an SVG mark, favicons, and single alpha-mask icons coloured by CSS; brand sheets moved to Assets/brand as references. |
