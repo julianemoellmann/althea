@@ -2,8 +2,6 @@
 
 *Technical appendix. Submitted with the proposal and source code to the Organization Science special issue*
 
-> This is the Markdown version of [`Althea_Technical_Appendix.docx`](../Althea_Technical_Appendix.docx), for reading on GitHub. The Word file is the version submitted.
-
 | Item | Details |
 |---|---|
 | Source code | This repository, supplied with the submission |
