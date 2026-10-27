@@ -49,6 +49,8 @@ The server finds the pi SDK in this order: `ALTHEA_PI_SDK` (path to `@earendil-w
 | `tests/workspace.test.js` | Node tests against the real example exports. |
 | `Althea.md` | Product specification (layers, workflow, functions). |
 | `Althea_Design_Guidelines.md` | Visual and wording rules. Follow them for any UI text. |
+| `docs/althea-demo.gif` | Workflow recording embedded in the README (re-record when the UI changes noticeably). |
+| `LICENSE` | MIT. Bundled SheetJS and fonts keep their own licences in `vendor/`. |
 | `Example Data - *.xlsx` | Example ATLAS.ti exports (also served as `/samples/*.xlsx`). |
 | `Assets/` | `althea-mark.svg` (the logo, also inlined in `app.js` so the sidebar shows the light version), favicons, `icons/*.png` (96 px alpha masks coloured by CSS `mask`, so one file serves light and dark surfaces), `brand/*.jpg` (design references, not served by the build). The original multi-megabyte PNGs were removed; they remain in git history. |
 
@@ -72,7 +74,8 @@ app.js analyze() ─▶ piAvailable() (fresh each run) ─▶ piProvider.analyze
 
 - **Provider contract** (`src/analysis.js`): `analyze({module, codeIds, project, signal}) -> finding`. A finding has title, rating, evidenceSummary, interpretation, confidence, suggestion, evidenceIds, classifications `{quotationId: {rating, note}}`, suggestedFields, limitation, provenance, origin (`'pi'` or `'simulation'`), and for Pi also model, thinking, instructions and `trace` (`traceOf()` in `agent/pi-analyst.mjs`: reasoning steps, tool calls and shortened results; never the prompt or the submitted finding). Providers must never mutate the project.
 - **Isolation**: pi's built-in tools (bash, read, edit, write), extensions, skills and AGENTS.md discovery are all off. The agent sees only the payload through read-only tools and must report via `submit_finding` (TypeBox schema per module).
-- **Guard rails**: evidence and classifications citing quotations outside the selected code are dropped; unclassified quotations are noted in `limitation`; provenance always says "AI-generated interpretation · Pi agent (model) · review required".
+- **Guard rails**: evidence and classifications citing quotations outside the selected code are dropped; unclassified quotations are noted in `limitation`; provenance always says "AI-generated interpretation · Althea AI (model) · review required".
+- **Naming**: the UI calls the AI "Althea AI" everywhere (never "Pi" or a bare "AI"). "pi" appears only where the researcher must act on the tool itself (install it, `/login`, `/model`).
 - **Settings**: model, thinking level and `showTrace` are per browser (`localStorage` key `althea-pi-settings`). The methodological orientation is per project (`project.orientation`, travels in backups, up to 10,000 characters). Both are sent with each request and recorded on each finding. The orientation is appended to the built-in system prompt, never replaces it (it carries the `submit_finding` contract).
 - **Justification**: after `submit_finding`, the same session is asked to explain the finding (`explain_finding`: reasoning, alternatives, uncertainty), stored as `finding.justification`. Same thread on purpose, so the model explains from its own context instead of reconstructing it; labelled in the UI as a self-explanation written after the finding. A failed justification never discards the finding.
 - **Reasoning traces** are always recorded and shown only when the researcher turns them on. Providers differ: `openai-codex` (gpt-6.1-sol) reasons but sends the reasoning encrypted with an empty summary, so its trace shows "not shared by the model provider" plus tool use; providers that share reasoning show the text.

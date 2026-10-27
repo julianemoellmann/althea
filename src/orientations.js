@@ -1,5 +1,5 @@
 // Example methodological orientations a researcher can start from and adapt. Supplied by the research team.
-export const ORIENTATION_HELP = 'Describe the methodological assumptions that should guide Althea’s review, including how meaning, evidence, context, and alternative interpretations should be treated. This setting influences what Althea examines and how it formulates suggestions but does not change the dataset or replace researcher judgment.';
+export const ORIENTATION_HELP = 'Describe the methodological assumptions that should guide Althea AI’s review, including how meaning, evidence, context, and alternative interpretations should be treated. This setting influences what Althea AI examines and how it formulates suggestions but does not change the dataset or replace researcher judgment.';
 
 export const ORIENTATIONS = [{
   key: 'constructivist',

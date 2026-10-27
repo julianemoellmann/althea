@@ -2,6 +2,10 @@
 
 A local, single-researcher prototype for reviewing qualitative coding. `Althea.md` is the product specification and `Althea_Design_Guidelines.md` the visual and wording rules.
 
+![Althea workflow: system check, importing the example exports, preparing the data, choosing a code, Althea AI's finding and justification, the researcher's decision, confirmation and the decision history](docs/althea-demo.gif)
+
+*A complete review on the example data: system check, import, prepare, scope, Althea AI's finding and justification, the researcher's decision and the history. The two-minute analysis is sped up.*
+
 ## Run
 
 Requires Node.js 20 or later. No dependency installation is needed.
@@ -25,7 +29,7 @@ Every suggestion is Under review, Approved, Deferred or Rejected. Applying a cha
 
 When a project is created, Althea asks for a **methodological orientation**: the assumptions about meaning, evidence, context and alternative readings that should guide its review. It is saved with the project, can start from an example (constructivist, after Guba & Lincoln, 1994), and is changed under Settings.
 
-The supplied example is the "Example Data" export: 160 quotations from 92 sources, 10 flat codes, and 174 assignments, with the coder recorded as "Jane Doe". The Code Manager's Groundedness column is checked against the Quotation Manager; in this export the counts agree, so the import raises no Groundedness warnings.
+The supplied example is the "Example Data" export, coded from interview excerpts in the creatives subset of the [Anthropic Interviewer dataset](https://huggingface.co/datasets/Anthropic/AnthropicInterviewer/viewer/AnthropicInterviewer/creatives) on Hugging Face: 160 quotations from 92 sources, 10 flat codes, and 174 assignments, with the coder recorded as "Jane Doe". The Code Manager's Groundedness column is checked against the Quotation Manager; in this export the counts agree, so the import raises no Groundedness warnings.
 
 ## Saving and exports
 
@@ -41,7 +45,7 @@ To continue on another computer, run Althea there and choose **Restore a backup*
 
 `src/verification.js` provides simulated providers for all three single-code functions. They separate evidence, interpretation, confidence and suggestion, and propose a classification per quotation from label-word matches and co-assigned codes. These are labelled lexical demonstrations, not AI output. The earlier curated Authenticity examples remain for an earlier version of the example export. All codes support manual review.
 
-When [pi](https://github.com/earendil-works/pi) is installed and logged in, the server offers `/api/analyze` and the app uses the Pi agent instead of the simulation, through the same decision and confirmation pipeline. The selected code's quotations are then sent to the model provider pi is configured with. Findings are labelled with the model and "review required". Pi then explains its finding in the same session (reasoning, readings it set aside, what it is least sure of), shown under "Why AI reached this finding". Each Pi finding also records a reasoning trace (the model's reasoning where its provider shares it, and every tool it used); Settings can show it on the finding card for interpretability. Without pi, or on a static build, the simulation is used and no AI API is called. See `agent/PI.md`.
+When [pi](https://github.com/earendil-works/pi) is installed and logged in, the server offers `/api/analyze` and the app uses the Pi agent instead of the simulation, through the same decision and confirmation pipeline. The selected code's quotations are then sent to the model provider pi is configured with. Findings are labelled with the model and "review required". Pi then explains its finding in the same session (reasoning, readings it set aside, what it is least sure of), shown under "Why Althea AI reached this finding". Each Pi finding also records a reasoning trace (the model's reasoning where its provider shares it, and every tool it used); Settings can show it on the finding card for interpretability. Without pi, or on a static build, the simulation is used and no AI API is called. See `agent/PI.md`.
 
 ## Verification
 
@@ -51,6 +55,10 @@ npm test
 
 Tests exercise the actual supplied exports, malformed imports, decision previews, splitting/merging/recoding, unchanged originals, audit history, and backup validation. UI verification should include refresh/resume, project backup/restore, filtering, all four review paths, and responsive layouts.
 
-## Third-party component
+## Licence
 
-The locally packaged spreadsheet parser is SheetJS CE 0.20.3, obtained from the [official standalone distribution](https://docs.sheetjs.com/docs/getting-started/installation/standalone/). Its Apache 2.0 license is in `vendor/LICENSE.sheetjs.txt`. No external assets or services are required at runtime; the optional Pi analysis uses the model provider configured in pi.
+Althea is released under the [MIT Licence](LICENSE). Bundled third-party components keep their own licences, listed below.
+
+## Third-party components
+
+The locally packaged spreadsheet parser is SheetJS CE 0.20.3, obtained from the [official standalone distribution](https://docs.sheetjs.com/docs/getting-started/installation/standalone/). Its Apache 2.0 license is in `vendor/LICENSE.sheetjs.txt`. The Montserrat and Roboto Mono fonts in `vendor/fonts` are under the SIL Open Font License (`vendor/fonts/*-LICENSE.txt`). No external assets or services are required at runtime; the optional Pi analysis uses the model provider configured in pi.

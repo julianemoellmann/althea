@@ -28,7 +28,7 @@ export function savePiSettings(settings) {
 
 export async function piAvailable() {
   // A 404 means the server predates Pi support (or is a static build), not that pi is missing.
-  try { const r = await fetch('/api/pi/status'); return r.ok ? await r.json() : { available: false, reason: r.status === 404 ? 'this Althea server has no Pi support. Restart it with npm start' : `the server answered ${r.status}` }; }
+  try { const r = await fetch('/api/pi/status'); return r.ok ? await r.json() : { available: false, reason: r.status === 404 ? 'this Althea server has no Althea AI support. Restart it with npm start' : `the server answered ${r.status}` }; }
   catch { return { available: false, reason: 'the Althea server could not be reached' }; }
 }
 
@@ -37,7 +37,7 @@ export const piProvider = {
     signal?.throwIfAborted();
     const response = await fetch('/api/analyze', { method: 'POST', signal, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ module, payload: piPayload(project, codeIds), options: { model: piSettings().model, thinking: piSettings().thinking, instructions: project.orientation || '' } }) });
     const body = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(body.error || `Pi request failed (${response.status})`);
+    if (!response.ok) throw new Error(body.error || `Althea AI request failed (${response.status})`);
     return { ...body.finding, projectRevision: project.revision };
   },
 };

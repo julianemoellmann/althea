@@ -103,7 +103,7 @@ const quoteLine = (q, labels) => `[${q.id}] (${q.quotationId}${labels.length ? `
 /** payload: { code, codes, quotations, assignments } — a read-only copy of the project sent by the browser.
  * options: { model: "provider/id", thinking, instructions } from the researcher's settings; each is optional. */
 export async function analyzeWithPi({ module, payload, options = {}, signal, model: override, onEvent = () => {} }) {
-  if (!TASKS[module]) throw new Error(`Pi does not support the ${module} function.`);
+  if (!TASKS[module]) throw new Error(`Althea AI does not support the ${module} function.`);
   const instructions = String(options.instructions || '').trim();
   if (instructions.length > MAX_INSTRUCTIONS) throw new Error(`Keep the instructions under ${MAX_INSTRUCTIONS} characters.`);
   if (options.thinking && !THINKING.includes(options.thinking)) throw new Error(`Unknown thinking level "${options.thinking}".`);
@@ -234,12 +234,12 @@ export async function checkup() {
   checks.push({ id: 'node', label: 'Node.js', ok: major >= 20, detail: `Version ${process.versions.node}`, fix: 'Install Node.js 20 or later, then start Althea again.' });
   try {
     const { version } = await loadPi();
-    checks.push({ id: 'sdk', label: 'Pi agent', ok: true, detail: `pi ${version} found` });
+    checks.push({ id: 'sdk', label: 'Althea AI engine (pi)', ok: true, detail: `pi ${version} found` });
     const models = await modelRuntime(), available = await models.getAvailable();
     const { model } = defaults((await loadPi()).sdk, models);
-    checks.push({ id: 'login', label: 'Pi login', ok: available.length > 0, detail: available.length ? `${available.length} model${available.length === 1 ? '' : 's'} available${model ? `; default ${model}` : ''}` : 'No model provider is logged in.', fix: 'Run pi in a terminal and log in with /login, then pick a model with /model.' });
+    checks.push({ id: 'login', label: 'Model login (pi)', ok: available.length > 0, detail: available.length ? `${available.length} model${available.length === 1 ? '' : 's'} available${model ? `; default ${model}` : ''}` : 'No model provider is logged in.', fix: 'Run pi in a terminal and log in with /login, then pick a model with /model.' });
   } catch (error) {
-    checks.push({ id: 'sdk', label: 'Pi agent', ok: false, detail: /Cannot find|not found|ENOENT/i.test(error.message) ? 'The pi agent was not found on this computer.' : `pi could not be loaded: ${error.message}`, fix: 'Install pi so that the pi command works in a terminal, or set ALTHEA_PI_SDK. Then restart Althea.' });
+    checks.push({ id: 'sdk', label: 'Althea AI engine (pi)', ok: false, detail: /Cannot find|not found|ENOENT/i.test(error.message) ? 'The pi agent was not found on this computer.' : `pi could not be loaded: ${error.message}`, fix: 'Install pi so that the pi command works in a terminal, or set ALTHEA_PI_SDK. Then restart Althea.' });
   }
   return checks;
 }
@@ -265,7 +265,7 @@ function toFinding(module, code, own, f, model, ownIds) {
   const label = { verification: 'Verification', coherence: 'Coherence', definition: 'Definition draft' }[module];
   return {
     title: f.title || `${label} of ${code.label}`, module, origin: 'pi', version: 'althea-pi-v1', model,
-    provenance: `AI-generated interpretation · Pi agent (${model}) · review required`,
+    provenance: `AI-generated interpretation · Althea AI (${model}) · review required`,
     timestamp: new Date().toISOString(), coverage: own.length, evidenceIds, classifications,
     rating: module === 'definition' ? `${String(`${f.core || ''} ${f.boundary || ''}`).trim().split(/\s+/u).filter(Boolean).length} of 50 words` : f.assessment.toUpperCase(),
     evidenceSummary: f.evidenceSummary, interpretation: f.interpretation, confidence: f.confidence, suggestion: f.suggestion,
