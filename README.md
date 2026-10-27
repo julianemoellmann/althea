@@ -6,6 +6,8 @@ A local, single-researcher prototype for reviewing qualitative coding. `Althea.m
 
 *A complete review on the example data: system check, import, prepare, scope, Althea AI's finding and justification, the researcher's decision and the history. The two-minute analysis is sped up.*
 
+**Technical appendix:** [read it on GitHub](docs/TECHNICAL_APPENDIX.md) (architecture, installation, configuring pi, the researcher workflow with screenshots, transparency, data protection and limitations), or download the [Word version](Althea_Technical_Appendix.docx).
+
 ## Run
 
 Requires Node.js 20 or later. No dependency installation is needed.

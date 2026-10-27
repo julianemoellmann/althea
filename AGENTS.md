@@ -50,6 +50,7 @@ The server finds the pi SDK in this order: `ALTHEA_PI_SDK` (path to `@earendil-w
 | `Althea.md` | Product specification (layers, workflow, functions). |
 | `Althea_Design_Guidelines.md` | Visual and wording rules. Follow them for any UI text. |
 | `docs/althea-demo.gif` | Workflow recording embedded in the README (re-record when the UI changes noticeably). |
+| `Althea_Technical_Appendix.docx`, `docs/TECHNICAL_APPENDIX.md` | Technical appendix for the journal submission (Word) and the same text for reading on GitHub, with figures in `docs/appendix/`. Keep the two in step when either changes. |
 | `LICENSE` | MIT. Bundled SheetJS and fonts keep their own licences in `vendor/`. |
 | `Example Data - *.xlsx` | Example ATLAS.ti exports (also served as `/samples/*.xlsx`). |
 | `Assets/` | `althea-mark.svg` (the logo, also inlined in `app.js` so the sidebar shows the light version), favicons, `icons/*.png` (96 px alpha masks coloured by CSS `mask`, so one file serves light and dark surfaces), `brand/*.jpg` (design references, not served by the build). The original multi-megabyte PNGs were removed; they remain in git history. |
